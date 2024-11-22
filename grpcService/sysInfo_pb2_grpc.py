@@ -25,7 +25,7 @@ if _version_not_supported:
     )
 
 
-class sysInfoServiceStub(object):
+class SysInfoServiceStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -35,18 +35,18 @@ class sysInfoServiceStub(object):
             channel: A grpc.Channel.
         """
         self.cpuService = channel.unary_stream(
-                '/sysInfo.sysInfoService/cpuService',
-                request_serializer=grpcService_dot_sysInfo__pb2.cpuRequest.SerializeToString,
-                response_deserializer=grpcService_dot_sysInfo__pb2.cpuReply.FromString,
+                '/sysInfo.SysInfoService/cpuService',
+                request_serializer=grpcService_dot_sysInfo__pb2.CpuRequest.SerializeToString,
+                response_deserializer=grpcService_dot_sysInfo__pb2.CpuReply.FromString,
                 _registered_method=True)
         self.sysInfoService = channel.unary_unary(
-                '/sysInfo.sysInfoService/sysInfoService',
-                request_serializer=grpcService_dot_sysInfo__pb2.sysInfoRequest.SerializeToString,
-                response_deserializer=grpcService_dot_sysInfo__pb2.sysInfoReply.FromString,
+                '/sysInfo.SysInfoService/sysInfoService',
+                request_serializer=grpcService_dot_sysInfo__pb2.SysInfoRequest.SerializeToString,
+                response_deserializer=grpcService_dot_sysInfo__pb2.SysInfoReply.FromString,
                 _registered_method=True)
 
 
-class sysInfoServiceServicer(object):
+class SysInfoServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def cpuService(self, request, context):
@@ -62,27 +62,27 @@ class sysInfoServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
 
-def add_sysInfoServiceServicer_to_server(servicer, server):
+def add_SysInfoServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'cpuService': grpc.unary_stream_rpc_method_handler(
                     servicer.cpuService,
-                    request_deserializer=grpcService_dot_sysInfo__pb2.cpuRequest.FromString,
-                    response_serializer=grpcService_dot_sysInfo__pb2.cpuReply.SerializeToString,
+                    request_deserializer=grpcService_dot_sysInfo__pb2.CpuRequest.FromString,
+                    response_serializer=grpcService_dot_sysInfo__pb2.CpuReply.SerializeToString,
             ),
             'sysInfoService': grpc.unary_unary_rpc_method_handler(
                     servicer.sysInfoService,
-                    request_deserializer=grpcService_dot_sysInfo__pb2.sysInfoRequest.FromString,
-                    response_serializer=grpcService_dot_sysInfo__pb2.sysInfoReply.SerializeToString,
+                    request_deserializer=grpcService_dot_sysInfo__pb2.SysInfoRequest.FromString,
+                    response_serializer=grpcService_dot_sysInfo__pb2.SysInfoReply.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'sysInfo.sysInfoService', rpc_method_handlers)
+            'sysInfo.SysInfoService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('sysInfo.sysInfoService', rpc_method_handlers)
+    server.add_registered_method_handlers('sysInfo.SysInfoService', rpc_method_handlers)
 
 
  # This class is part of an EXPERIMENTAL API.
-class sysInfoService(object):
+class SysInfoService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
@@ -99,9 +99,9 @@ class sysInfoService(object):
         return grpc.experimental.unary_stream(
             request,
             target,
-            '/sysInfo.sysInfoService/cpuService',
-            grpcService_dot_sysInfo__pb2.cpuRequest.SerializeToString,
-            grpcService_dot_sysInfo__pb2.cpuReply.FromString,
+            '/sysInfo.SysInfoService/cpuService',
+            grpcService_dot_sysInfo__pb2.CpuRequest.SerializeToString,
+            grpcService_dot_sysInfo__pb2.CpuReply.FromString,
             options,
             channel_credentials,
             insecure,
@@ -126,9 +126,9 @@ class sysInfoService(object):
         return grpc.experimental.unary_unary(
             request,
             target,
-            '/sysInfo.sysInfoService/sysInfoService',
-            grpcService_dot_sysInfo__pb2.sysInfoRequest.SerializeToString,
-            grpcService_dot_sysInfo__pb2.sysInfoReply.FromString,
+            '/sysInfo.SysInfoService/sysInfoService',
+            grpcService_dot_sysInfo__pb2.SysInfoRequest.SerializeToString,
+            grpcService_dot_sysInfo__pb2.SysInfoReply.FromString,
             options,
             channel_credentials,
             insecure,

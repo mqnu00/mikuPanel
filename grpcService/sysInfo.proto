@@ -2,49 +2,49 @@ syntax = "proto3";
 // python -m grpc_tools.protoc -I./ --python_out=pyi_out:. --grpc_python_out=. sysInfo.proto
 package sysInfo;
 
-message cpuRequest {
+message CpuRequest {
 }
 
-message cpuReply {
+message CpuReply {
     float usage = 1;
 }
 
-message memoryRequest {
+message MemoryRequest {
 
 }
 
-message memoryReply {
+message MemoryReply {
     int32 usage = 1;
     int32 total = 2;
     int32 used = 3;
 }
 
-message sysInfoRequest {
+message SysInfoRequest {
 
 }
 
-message cpuInfo {
-    string cpu_name = 1;
-    int32 cpu_core = 2;
-    int32 cpu_thread = 3;
-    float cpu_freq = 4;
+message CpuInfo {
+    string cpuName = 1;
+    int32 cpuCore = 2;
+    int32 cpuThread = 3;
+    float cpuFreq = 4;
 }
 
-message memoryInfo {
-    float memory_total = 1;
+message MemoryInfo {
+    float memoryTotal = 1;
 }
 
 
-message sysInfoReply {
-    cpuInfo cpu_info = 1;
-    memoryInfo memory_info = 2;
+message SysInfoReply {
+    CpuInfo cpuInfo = 1;
+    MemoryInfo memoryInfo = 2;
     message diskInfo {
 
     }
 }
 
 
-service sysInfoService {
-    rpc cpuService (cpuRequest) returns (stream cpuReply) {}
-    rpc sysInfoService (sysInfoRequest) returns (sysInfoReply) {}
+service SysInfoService {
+    rpc cpuService (CpuRequest) returns (stream CpuReply) {}
+    rpc sysInfoService (SysInfoRequest) returns (SysInfoReply) {}
 }

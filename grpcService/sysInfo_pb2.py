@@ -24,7 +24,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x19grpcService/sysInfo.proto\x12\x07sysInfo\"\x0c\n\ncpuRequest\"\x19\n\x08\x63puReply\x12\r\n\x05usage\x18\x01 \x01(\x02\"\x0f\n\rmemoryRequest\"9\n\x0bmemoryReply\x12\r\n\x05usage\x18\x01 \x01(\x05\x12\r\n\x05total\x18\x02 \x01(\x05\x12\x0c\n\x04used\x18\x03 \x01(\x05\"\x10\n\x0esysInfoRequest\"S\n\x07\x63puInfo\x12\x10\n\x08\x63pu_name\x18\x01 \x01(\t\x12\x10\n\x08\x63pu_core\x18\x02 \x01(\x05\x12\x12\n\ncpu_thread\x18\x03 \x01(\x05\x12\x10\n\x08\x63pu_freq\x18\x04 \x01(\x02\"\"\n\nmemoryInfo\x12\x14\n\x0cmemory_total\x18\x01 \x01(\x02\"h\n\x0csysInfoReply\x12\"\n\x08\x63pu_info\x18\x01 \x01(\x0b\x32\x10.sysInfo.cpuInfo\x12(\n\x0bmemory_info\x18\x02 \x01(\x0b\x32\x13.sysInfo.memoryInfo\x1a\n\n\x08\x64iskInfo2\x8e\x01\n\x0esysInfoService\x12\x38\n\ncpuService\x12\x13.sysInfo.cpuRequest\x1a\x11.sysInfo.cpuReply\"\x00\x30\x01\x12\x42\n\x0esysInfoService\x12\x17.sysInfo.sysInfoRequest\x1a\x15.sysInfo.sysInfoReply\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x19grpcService/sysInfo.proto\x12\x07sysInfo\"\x0c\n\nCpuRequest\"\x19\n\x08\x43puReply\x12\r\n\x05usage\x18\x01 \x01(\x02\"\x0f\n\rMemoryRequest\"9\n\x0bMemoryReply\x12\r\n\x05usage\x18\x01 \x01(\x05\x12\r\n\x05total\x18\x02 \x01(\x05\x12\x0c\n\x04used\x18\x03 \x01(\x05\"\x10\n\x0eSysInfoRequest\"O\n\x07\x43puInfo\x12\x0f\n\x07\x63puName\x18\x01 \x01(\t\x12\x0f\n\x07\x63puCore\x18\x02 \x01(\x05\x12\x11\n\tcpuThread\x18\x03 \x01(\x05\x12\x0f\n\x07\x63puFreq\x18\x04 \x01(\x02\"!\n\nMemoryInfo\x12\x13\n\x0bmemoryTotal\x18\x01 \x01(\x02\"f\n\x0cSysInfoReply\x12!\n\x07\x63puInfo\x18\x01 \x01(\x0b\x32\x10.sysInfo.CpuInfo\x12\'\n\nmemoryInfo\x18\x02 \x01(\x0b\x32\x13.sysInfo.MemoryInfo\x1a\n\n\x08\x64iskInfo2\x8e\x01\n\x0eSysInfoService\x12\x38\n\ncpuService\x12\x13.sysInfo.CpuRequest\x1a\x11.sysInfo.CpuReply\"\x00\x30\x01\x12\x42\n\x0esysInfoService\x12\x17.sysInfo.SysInfoRequest\x1a\x15.sysInfo.SysInfoReply\"\x00\x62\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -42,13 +42,13 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_SYSINFOREQUEST']._serialized_start=155
   _globals['_SYSINFOREQUEST']._serialized_end=171
   _globals['_CPUINFO']._serialized_start=173
-  _globals['_CPUINFO']._serialized_end=256
-  _globals['_MEMORYINFO']._serialized_start=258
-  _globals['_MEMORYINFO']._serialized_end=292
-  _globals['_SYSINFOREPLY']._serialized_start=294
-  _globals['_SYSINFOREPLY']._serialized_end=398
-  _globals['_SYSINFOREPLY_DISKINFO']._serialized_start=388
-  _globals['_SYSINFOREPLY_DISKINFO']._serialized_end=398
-  _globals['_SYSINFOSERVICE']._serialized_start=401
-  _globals['_SYSINFOSERVICE']._serialized_end=543
+  _globals['_CPUINFO']._serialized_end=252
+  _globals['_MEMORYINFO']._serialized_start=254
+  _globals['_MEMORYINFO']._serialized_end=287
+  _globals['_SYSINFOREPLY']._serialized_start=289
+  _globals['_SYSINFOREPLY']._serialized_end=391
+  _globals['_SYSINFOREPLY_DISKINFO']._serialized_start=381
+  _globals['_SYSINFOREPLY_DISKINFO']._serialized_end=391
+  _globals['_SYSINFOSERVICE']._serialized_start=394
+  _globals['_SYSINFOSERVICE']._serialized_end=536
 # @@protoc_insertion_point(module_scope)
