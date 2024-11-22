@@ -9,8 +9,11 @@ async def run():
         stub = sysInfo_pb2_grpc.SysInfoServiceStub(channel)
 
         async def do_chat():
-            response = await stub.sysInfoService(sysInfo_pb2.CpuRequest())
-            print(response)
+            # response = await stub.sysInfoService(sysInfo_pb2.SysInfoRequest())
+            # print(response)
+            response = stub.cpuService(sysInfo_pb2.CpuRequest())
+            async for res in response:
+                print(res)
 
         await do_chat()
 

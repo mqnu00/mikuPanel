@@ -20,5 +20,5 @@ def get_cpu_per():
 
 
 if __name__ == '__main__':
-    print(get_cpu_info().__dict__)
+    print(get_cpu_info())
     print(get_cpu_per())
