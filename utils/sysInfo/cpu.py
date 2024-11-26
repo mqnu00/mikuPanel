@@ -16,7 +16,10 @@ def get_cpu_info():
 
 
 def get_cpu_per():
-    return psutil.cpu_percent(interval=1)
+    value = psutil.cpu_percent()
+    if value == 0:
+        value = psutil.cpu_percent()
+    return value
 
 
 if __name__ == '__main__':
