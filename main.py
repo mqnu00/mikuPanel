@@ -1,9 +1,10 @@
 import asyncio
+import json
 
 from fastapi import FastAPI, WebSocket
 from starlette.websockets import WebSocketDisconnect
 
-from utils.sysInfo import cpu
+from utils.sysInfo import cpu, memory
 
 app = FastAPI()
 
@@ -37,5 +38,17 @@ async def cpu_info(websocket: WebSocket):
 @app.websocket("/memory")
 async def memory_info(websocket: WebSocket):
     await websocket.accept()
+    while True:
+        try:
+            await asyncio.sleep(1)
+            used, free, per = memory.get_memory_per()
+            await websocket.send_text(json.dumps({
+                "used": used,
+                "free": free,
+                "value": per
+            }))
+        except WebSocketDisconnect:
+            break
+
 
 
