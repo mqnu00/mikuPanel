@@ -34,3 +34,8 @@ async def cpu_info(websocket: WebSocket):
         except WebSocketDisconnect:
             break
 
+@app.websocket("/memory")
+async def memory_info(websocket: WebSocket):
+    await websocket.accept()
+
+
