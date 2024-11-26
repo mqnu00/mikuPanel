@@ -18,7 +18,7 @@ async def say_hello(name: str):
     return {"message": f"Hello {name}"}
 
 
-@app.websocket("utils/sysInfo")
+@app.websocket("/sysInfo")
 async def sys_info(websocket: WebSocket):
     await websocket.accept()
     await websocket.send_text('123')
