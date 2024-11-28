@@ -4,7 +4,7 @@ import json
 from fastapi import FastAPI, WebSocket
 from starlette.websockets import WebSocketDisconnect
 
-from utils.sysInfo import cpu, memory
+from utils.sysInfo import cpu, memory, network
 
 app = FastAPI()
 
@@ -50,5 +50,18 @@ async def memory_info(websocket: WebSocket):
         except WebSocketDisconnect:
             break
 
+
+@app.websocket("/network")
+async def network_info(websocket: WebSocket):
+    await websocket.accept()
+    while True:
+        try:
+            send, recv = await network.get_network_per()
+            await websocket.send_text(json.dumps({
+                "send": send,
+                "recv": recv
+            }))
+        except WebSocketDisconnect:
+            break
 
 
