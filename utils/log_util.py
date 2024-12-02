@@ -17,6 +17,7 @@ def setup_logger(
 ):
     """
     创建一个指定服务的日志记录器。
+    线程安全，进程不安全
     :param name: 日志记录器名称
     :param level: 日志级别
     :param is_console: 是否使用控制台输出
