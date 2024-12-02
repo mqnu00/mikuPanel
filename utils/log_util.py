@@ -14,7 +14,7 @@ def setup_logger(
         max_bytes: int = 2 * 1024 * 1024,  # 最大文件大小2MB
         backup_count: int = 15,  # 保留最多15个备份
         use_gzip: bool = True  # 是否压缩旧日志
-):
+) -> logging.Logger:
     """
     创建一个指定服务的日志记录器。
     线程安全，进程不安全
@@ -70,17 +70,11 @@ def setup_logger(
     return logger
 
 
-if multiprocessing.current_process().name == 'MainProcess':
-    log = setup_logger(
-        name='MainProcessLogger',
-        log_dir='./logs'
-    )
-    log.info(log.name)
-else:
-    log = setup_logger(
-        name='123logger',
-        log_dir='.'
-    )
+log = setup_logger(
+    name=multiprocessing.current_process().name,
+    log_dir='./logs'
+)
+log.info(log.name)
 
 # 示例：使用 logger
 if __name__ == "__main__":
