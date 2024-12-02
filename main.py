@@ -4,7 +4,7 @@ import json
 from fastapi import FastAPI, WebSocket
 from starlette.websockets import WebSocketDisconnect
 
-from utils.sysInfo import cpu, memory, network
+from utils.sysInfo import cpu, memory, network, disk
 
 app = FastAPI()
 
@@ -60,6 +60,20 @@ async def network_info(websocket: WebSocket):
             await websocket.send_text(json.dumps({
                 "send": send,
                 "recv": recv
+            }))
+        except WebSocketDisconnect:
+            break
+
+
+@app.websocket("/disk")
+async def disk_info(websocket: WebSocket):
+    await websocket.accept()
+    while True:
+        try:
+            read, write = await disk.get_disk_per()
+            await websocket.send_text(json.dumps({
+                "read": read,
+                "write": write
             }))
         except WebSocketDisconnect:
             break
