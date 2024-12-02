@@ -4,6 +4,17 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from utils.log_util import log
 
+smtp_server_info = {
+    "SMTP_PORT": 25,
+    "SMTP_SSL_PORT": 465,
+    "smtp": {
+        'qq': 'smtp.qq.com',
+        '163': 'smtp.163.com',
+        '126': 'smtp.126.com',
+        'google': 'smtp.gmail.com',
+        'wecom': 'smtp.exmail.qq.com',
+        'aliyun': 'smtp.qiye.aliyun.com',
+    }}
 
 # 发送邮件
 def send_email(
