@@ -2,3 +2,4 @@
 .git
 password.py
 /utils/logs
+sshInfo.py
