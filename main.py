@@ -97,6 +97,7 @@ async def terminals(websocket: WebSocket):
     client.connect(hostname=sshInfo.host, port=sshInfo.port, username=sshInfo.username, password=sshInfo.pwd)
     chan = client.invoke_shell('xterm')
     chan.settimeout(0)
+    chan.resize_pty(width_pixels=1500, height_pixels=900)
 
     async def recv_msg():
         while True:
