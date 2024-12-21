@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import json
+import pprint
 import subprocess
 
 import uvicorn
@@ -98,18 +99,27 @@ async def terminals(websocket: WebSocket):
     client.connect(hostname=sshInfo.host, port=sshInfo.port, username=sshInfo.username, password=sshInfo.pwd)
     chan = client.invoke_shell('xterm')
     chan.settimeout(0)
-    chan.resize_pty(width_pixels=1500, height_pixels=900)
 
     async def recv_msg():
         while True:
             msg = await websocket.receive_text()
-            print(msg)
-            chan.send(msg.encode('utf8'))
+            # chan.send(msg.encode('utf8'))
+            print("???"+msg)
+            recv_info: dict = json.loads(msg)
+            pprint.pprint(recv_info)
+            recv_type = recv_info.get('type')
+            if recv_type == 'resize':
+                chan.resize_pty(width=recv_info.get("cols"), height=recv_info.get("rows"))
+            elif recv_type == 'cmd':
+                print(recv_info.get('msg').encode('utf8'))
+                chan.send(recv_info.get('msg').encode('utf8'))
+
 
     async def send_msg():
         while True:
             try:
                 rec = chan.recv(1024)
+                # print(rec.decode('utf8'), end='')
                 await websocket.send_text(rec.decode('utf8'))
             except Exception:
                 await asyncio.sleep(0.1)
