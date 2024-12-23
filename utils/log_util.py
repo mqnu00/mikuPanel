@@ -11,6 +11,7 @@ def setup_logger(
         is_console: bool = True,
         is_file: bool = True,
         log_dir: str = None,
+        encoding: str = 'utf8',
         max_bytes: int = 2 * 1024 * 1024,  # 最大文件大小2MB
         backup_count: int = 15,  # 保留最多15个备份
         use_gzip: bool = True  # 是否压缩旧日志
@@ -23,6 +24,7 @@ def setup_logger(
     :param is_console: 是否使用控制台输出
     :param is_file: 是否使用文件输出
     :param log_dir: 日志文件路径
+    :param encoding: log文件编码
     :param max_bytes: 每个日志文件的最大字节大小
     :param backup_count: 最多备份多少个日志文件
     :param use_gzip: 是否对旧日志进行gzip压缩
@@ -52,7 +54,7 @@ def setup_logger(
             log_file_path = os.path.join(log_dir, f"{datetime.now().strftime('%Y-%m-%d')}.log")
 
             # 使用TimedRotatingFileHandler进行日志文件滚动
-            handler = TimedRotatingFileHandler(log_file_path, when="midnight", interval=1)
+            handler = TimedRotatingFileHandler(log_file_path, when="midnight", interval=1, encoding=encoding)
             handler.suffix = "%Y-%m-%d"  # 文件名后缀（日期）
 
             # 设置最大文件大小和备份数量
