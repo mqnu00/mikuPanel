@@ -9,6 +9,7 @@ from websockets.asyncio.connection import Connection
 from websockets.asyncio.server import ServerConnection
 from websockets.http11 import Request, Response, SERVER
 
+from mission import mission
 from utils.log_util import log
 
 
@@ -44,13 +45,13 @@ class MikuServer(object):
 
     async def handle(self, websocket: ServerConnection):
         try:
-            while True:
-                msg = await websocket.recv()
-                # log.info(msg)
+            msg = await websocket.recv()
+            miss = mission.Mission.create()
+            miss.config()
         except websockets.ConnectionClosed:
             log.info('server closed by client')
         except Exception:
-            log.exception()
+            log.exception('wrong')
 
 
 if __name__ == '__main__':
