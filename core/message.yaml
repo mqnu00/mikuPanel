@@ -1,0 +1,10 @@
+close:
+  dir: core.message.action
+  method: execute
+  module: closeServer
+  name: close_server
+run:
+  dir: core.message.run
+  method: execute
+  module: run
+  name: run
