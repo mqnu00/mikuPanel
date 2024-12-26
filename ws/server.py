@@ -34,6 +34,7 @@ class MikuServer(object):
                                             max_size=50 * 1024 * 1024,
                                             process_request=self._process_requests,
                                             logger=log)
+            await server.start_serving()
             log.info(f"WebSocket 服务器已启动，监听 ws://localhost:{self.port} 🎉")
             await server.wait_closed()
 
@@ -45,12 +46,54 @@ class MikuServer(object):
 
     async def handle(self, websocket: ServerConnection):
         try:
-            msg = await websocket.recv()
-            miss = mission.Mission.create()
-            miss.config()
-        except websockets.ConnectionClosed:
+            from components.terminal.main import create_terminal, del_terminal, send, recv, check_terminal
+            from components.terminal.terminal import SSHInfo, Terminal
+            from tests import server_password
+            create_terminal(SSHInfo(
+                host=server_password.host,
+                port=server_password.port,
+                username=server_password.username,
+                password=server_password.password
+            ))
+
+            running = True
+
+            async def receive():
+
+                async for msg in websocket:
+                    if not send('123', msg):
+                        break
+                print("recv done")
+
+            async def send_to():
+                async def async_wrapper():
+                    gen = recv('123')
+                    while True:
+                        try:
+                            # 这里使用 loop.run_in_executor 来运行同步代码
+                            value = await asyncio.to_thread(next, gen)
+                            yield value
+                        except StopIteration as e:
+                            # 处理返回值
+                            res = e.value
+                            break
+                            pass
+                    yield res
+
+                async for res in async_wrapper():
+                    if res:
+                        await websocket.send(res)
+                    else:
+                        break
+                print('send done')
+                await websocket.close()
+
+            await asyncio.gather(receive(), send_to())
+
+        except websockets.exceptions.ConnectionClosed:
             log.info('server closed by client')
         except Exception:
+
             log.exception('wrong')
 
 
