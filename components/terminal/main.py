@@ -5,6 +5,7 @@ from typing import List, Dict
 from components.terminal.terminal import Terminal, SSHInfo
 from core.component_init import Config
 from utils.log_util import log
+from websockets.asyncio.server import ServerConnection
 import uuid
 from websockets.asyncio.server import ServerConnection
 
@@ -80,6 +81,51 @@ def recv(uid: str, *args, **kwargs):
 
 
 init()
+
+
+async def test(websocket: ServerConnection):
+    from components.terminal.terminal import SSHInfo, Terminal
+    from tests import server_password
+    create_terminal(SSHInfo(
+        host=server_password.host,
+        port=server_password.port,
+        username=server_password.username,
+        password=server_password.password
+    ))
+
+    running = True
+
+    async def receive():
+
+        async for msg in websocket:
+            if not send('123', msg):
+                break
+        print("recv done")
+
+    async def send_to():
+        async def async_wrapper():
+            gen = recv('123')
+            while True:
+                try:
+                    value = await asyncio.to_thread(next, gen)
+                    yield value
+                except StopIteration as e:
+                    # 处理返回值
+                    res = e.value
+                    break
+                    pass
+            yield res
+
+        async for res in async_wrapper():
+            if res:
+                await websocket.send(res)
+            else:
+                break
+        print('send done')
+        await websocket.close()
+
+    await asyncio.gather(receive(), send_to())
+
 
 if __name__ == '__main__':
     init()
