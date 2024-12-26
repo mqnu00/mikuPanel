@@ -7,6 +7,7 @@ from components.base_component import BaseComponent
 from components.terminal.terminal import Terminal
 from core.component_init import Config
 from utils.log_util import log
+import uuid
 
 
 class TerminalComponent(BaseComponent):
@@ -26,7 +27,9 @@ class TerminalComponent(BaseComponent):
         terminal.connect_to_terminal()
 
         terminals: Dict[str, Terminal] = self.config.instance.get('terminals')
+        uid = str(uuid.uuid1())
         terminals['123'] = terminal
+        return uid
 
     def check_terminal(self, uid, *args, **kwargs) -> Terminal | bool:
         try:
