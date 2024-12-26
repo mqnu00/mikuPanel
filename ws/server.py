@@ -46,8 +46,9 @@ class MikuServer(object):
 
     async def handle(self, websocket: ServerConnection):
         try:
-            from components.terminal.main import test
-            await test(websocket)
+            from components.terminal.main import TerminalComponent
+            terminal_component = TerminalComponent()
+            await terminal_component.handle(websocket)
         except websockets.exceptions.ConnectionClosed:
             log.info('server closed by client')
         except Exception:
