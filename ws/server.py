@@ -54,13 +54,13 @@ class MikuServer(object):
             #     'componentName': 'terminal'
             # })
 
-            # await execute(websocket, {
-            #     'componentName': 'terminal'
-            # })
+            await execute(websocket, {
+                'componentName': 'terminal'
+            })
 
-            msg = await websocket.recv()
-            msg = json.loads(msg)
-            log.info(str(msg))
+            # msg = await websocket.recv()
+            # msg = json.loads(msg)
+            # log.info(str(msg))
 
             # from components.terminal.main import TerminalComponent
             # terminal_component = TerminalComponent()

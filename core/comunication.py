@@ -1,17 +1,35 @@
 import asyncio
+import multiprocessing
+import uuid
 from asyncio.queues import Queue
+from multiprocessing import Manager
+from multiprocessing.managers import SyncManager
+from multiprocessing.pool import Pool
+
+share = None
+process_pool = None
 
 
-class MessageQueue(object):
+class Message(object):
 
     def __init__(self,
-                 uid: str,
-                 component_type: str,
-                 tran: Queue):
+                 uid: str):
+        self.manager: SyncManager = Manager()
         self.uid = uid
-        self.component_type = component_type
-        self.chan = tran
+        self.action_info = self.manager.dict()
+        self.recv_queue = self.manager.Queue()
+        self.send_queue = self.manager.Queue()
 
 
-queues = MessageQueue('1', 'terminal', Queue())
-queuer = MessageQueue('2', 'terminal', Queue())
+def pool_initializer():
+    pass
+
+
+def init_pool(num: int):
+    global process_pool
+    process_pool: Pool = multiprocessing.Pool(num, initializer=pool_initializer, initargs=())
+
+
+def init_ipc():
+    global share
+    share = Message(str(uuid.uuid1()))
