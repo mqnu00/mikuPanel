@@ -2,7 +2,9 @@
 import asyncio
 import json
 import pprint
-from typing import Callable, Awaitable
+import uuid
+from asyncio import Task
+from typing import Callable, Awaitable, List, Coroutine, Any
 
 import websockets
 from websockets import Headers
@@ -47,24 +49,31 @@ class MikuServer(object):
 
     async def handle(self, websocket: ServerConnection):
         try:
+            log.info('server.handle')
 
-            from core.message.action.run import execute
+            msg: str = await websocket.recv()
+            from core.message.action.dispatch import action_dispatch
+            uid = await asyncio.to_thread(action_dispatch, msg)
+            log.info(uid)
 
-            # await asyncio.to_thread(execute, websocket, {
-            #     'componentName': 'terminal'
-            # })
+            from core.communication import share
+            from core import communication
 
-            await execute(websocket, {
-                'componentName': 'terminal'
-            })
+            async def recv_msg():
+                async for msg in websocket:
+                    log.info(msg)
+                    await asyncio.to_thread(communication.share[uid].recv_queue.put, msg)
+                log.info('websocket recv close')
 
-            # msg = await websocket.recv()
-            # msg = json.loads(msg)
-            # log.info(str(msg))
+            async def send_msg():
+                while True:
+                    msg = await asyncio.to_thread(communication.share[uid].send_queue.get)
+                    log.info(msg)
+                    await websocket.send(msg)
 
-            # from components.terminal.main import TerminalComponent
-            # terminal_component = TerminalComponent()
-            # await terminal_component.handle(websocket)
+            tasks: List[Task] = [asyncio.create_task(recv_msg()), asyncio.create_task(send_msg())]
+            await asyncio.gather(*tasks)
+
         except websockets.exceptions.ConnectionClosed:
             log.info('server closed by client')
         except Exception:

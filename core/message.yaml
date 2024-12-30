@@ -4,7 +4,12 @@ close:
   module: closeServer
   name: close_server
 run:
-  dir: core.message.run
+  dir: core.message.action
   method: execute
   module: run
   name: run
+connect-test:
+  dir: core.message.action
+  method: execute
+  module: connect_test
+  name: connect_test
