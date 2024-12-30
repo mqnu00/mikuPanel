@@ -74,7 +74,7 @@ def setup_logger(
 
 log = setup_logger(
     name=multiprocessing.current_process().name,
-    log_dir=rf'D:\program\python\code\mikuPanelGrpc\{multiprocessing.current_process().name}'
+    log_dir=rf'D:\program\python\code\mikuPanelGrpc\logs\{multiprocessing.current_process().name}'
 )
 log.info(log.name)
 
