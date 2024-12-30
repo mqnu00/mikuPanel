@@ -7,6 +7,7 @@ from components.base_component import BaseComponent
 from components.terminal.terminal import Terminal
 from core.component_init import Config
 from utils.log_util import log
+from core import communication
 import uuid
 
 
@@ -70,9 +71,9 @@ class TerminalComponent(BaseComponent):
             except Exception:
                 log.exception("recv_error")
                 continue
-        yield False
+        return False
 
-    async def handle(self, websocket: ServerConnection):
+    def handle(self):
         from components.terminal.terminal import SSHInfo, Terminal
         from tests import server_password
         self.create_terminal(SSHInfo(
@@ -82,33 +83,28 @@ class TerminalComponent(BaseComponent):
             password=server_password.password
         ))
 
-        async def receive():
+        def receive():
 
-            async for msg in websocket:
-                if not self.send('123', msg):
+            while True:
+                if not communication.share.recv_queue.empty():
+                    msg = communication.share.recv_queue.get()
+                    if not self.send('123', msg):
+                        break
+                if not self.check_terminal('123'):
                     break
             log.info("recv done")
 
-        async def send_to():
-            async def async_wrapper():
-                gen = self.recv('123')
-                while True:
-                    try:
-                        value = await asyncio.to_thread(next, gen)
-                        yield value
-                    except StopIteration as e:
-                        # 处理返回值
-                        res = e.value
-                        break
-                        pass
-                yield res
-
-            async for res in async_wrapper():
-                if res:
-                    await websocket.send(res)
-                else:
+        def send_to():
+            gen = self.recv('123')
+            while True:
+                try:
+                    communication.share.send_queue.put(next(gen))
+                except StopIteration:
                     break
             log.info('send done')
-            await websocket.close()
 
-        await asyncio.gather(receive(), send_to())
+        from concurrent.futures import ThreadPoolExecutor
+        thread_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="terminal_")
+        recv_future = thread_pool.submit(receive)
+        send_future = thread_pool.submit(send_to)
+        thread_pool.shutdown()

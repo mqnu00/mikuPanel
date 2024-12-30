@@ -6,19 +6,18 @@ from multiprocessing import Manager
 from multiprocessing.managers import SyncManager
 from multiprocessing.pool import Pool
 
-share = None
-process_pool = None
-
 
 class Message(object):
 
-    def __init__(self,
-                 uid: str):
-        self.manager: SyncManager = Manager()
-        self.uid = uid
-        self.action_info = self.manager.dict()
-        self.recv_queue = self.manager.Queue()
-        self.send_queue = self.manager.Queue()
+    def __init__(self):
+        self.action_info = manager.dict()
+        self.recv_queue = manager.Queue()
+        self.send_queue = manager.Queue()
+
+
+manager: SyncManager = None
+share: dict[str, Message] | Message = {}
+process_pool: Pool = None
 
 
 def pool_initializer():
@@ -27,9 +26,14 @@ def pool_initializer():
 
 def init_pool(num: int):
     global process_pool
-    process_pool: Pool = multiprocessing.Pool(num, initializer=pool_initializer, initargs=())
+    process_pool = multiprocessing.Pool(num, initializer=pool_initializer, initargs=())
 
 
-def init_ipc():
-    global share
-    share = Message(str(uuid.uuid1()))
+def init_ipc(info: str = None):
+    if info:
+        global share
+        share[info] = Message()
+    else:
+        # 保证 manager 只有一个
+        global manager
+        manager = multiprocessing.Manager()
