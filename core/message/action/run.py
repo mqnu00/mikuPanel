@@ -8,10 +8,13 @@ from websockets.server import ServerConnection
 
 
 def execute(component_name: str, share: Message):
-    communication.share = share
-    log.info(component_name)
-    module = importlib.import_module(f'components.{component_name}.main')
-    component_class = getattr(module, f'{component_name}Component')
-    component_instance = component_class()
-    component_instance.handle()
+    try:
+        communication.share = share
+        log.info(component_name)
+        module = importlib.import_module(f'components.{component_name}.main')
+        component_class = getattr(module, f'{component_name[0].upper()+component_name[1:]}Component')
+        component_instance = component_class()
+        component_instance.handle()
+    except Exception:
+        log.exception("run wrong")
     return True
