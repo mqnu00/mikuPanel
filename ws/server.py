@@ -4,6 +4,7 @@ import json
 import pprint
 import uuid
 from asyncio import Task
+from multiprocessing.pool import ApplyResult
 from typing import Callable, Awaitable, List, Coroutine, Any
 
 import websockets
@@ -53,7 +54,9 @@ class MikuServer(object):
 
             msg: str = await websocket.recv()
             from core.message.action.dispatch import action_dispatch
-            uid = await asyncio.to_thread(action_dispatch, msg)
+            uid: str
+            result: ApplyResult
+            uid, result = await asyncio.to_thread(action_dispatch, msg)
             log.info(uid)
 
             from core.communication import share
@@ -68,11 +71,17 @@ class MikuServer(object):
             async def send_msg():
                 while True:
                     msg = await asyncio.to_thread(communication.share[uid].send_queue.get)
-                    log.info(msg)
+                    if not msg:
+                        break
                     await websocket.send(msg)
+                log.info('websocket send close')
+
+            async def check_end():
+                if await asyncio.to_thread(result.get):
+                    await websocket.close()
 
             tasks: List[Task] = [asyncio.create_task(recv_msg()), asyncio.create_task(send_msg())]
-            await asyncio.gather(*tasks)
+            await asyncio.gather(*tasks, check_end())
 
         except websockets.exceptions.ConnectionClosed:
             log.info('server closed by client')
