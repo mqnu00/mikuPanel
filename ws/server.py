@@ -64,13 +64,15 @@ class MikuServer(object):
 
             async def recv_msg():
                 async for msg in websocket:
-                    log.info(msg)
                     await asyncio.to_thread(communication.share[uid].recv_queue.put, msg)
+                # client 断开连接
+                await asyncio.to_thread(communication.share[uid].recv_queue.put, None)
                 log.info('websocket recv close')
 
             async def send_msg():
                 while True:
                     msg = await asyncio.to_thread(communication.share[uid].send_queue.get)
+                    # None 没有消息
                     if not msg:
                         break
                     await websocket.send(msg)

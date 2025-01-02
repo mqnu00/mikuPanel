@@ -49,9 +49,6 @@ class Terminal(object):
             return msg.decode('utf8')
 
     def close(self):
-        try:
-            self.chan.close()
-            self.client.close()
-        except Exception:
-            log.exception('close error')
+        self.chan.close()
+        self.client.close()
 

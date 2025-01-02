@@ -54,8 +54,12 @@ class TerminalComponent(BaseComponent):
             terminal: Terminal = self.config.instance.get('terminals')[uid]
         except Exception:
             return False
-        if not terminal.send_to_terminal(msg):
-            self.del_terminal(uid)
+        # None client 连接中断
+        if not msg or not terminal.send_to_terminal(msg):
+            try:
+                self.del_terminal(uid)
+            except Exception:
+                log.exception('close terminal error')
             return False
         return True
 
@@ -65,7 +69,6 @@ class TerminalComponent(BaseComponent):
                 terminal: Terminal = self.config.instance.get('terminals')[uid]
                 res = terminal.recv_from_terminal()
                 if not res:
-                    self.del_terminal(uid)
                     break
                 yield res
             except Exception:
