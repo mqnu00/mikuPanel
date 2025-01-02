@@ -46,7 +46,10 @@ class Terminal(object):
             return False
         else:
             msg = self.chan.recv(4096)
-            return msg.decode('utf8')
+            try:
+                return msg.decode('utf8')
+            except UnicodeDecodeError:
+                return msg
 
     def close(self):
         self.chan.close()
