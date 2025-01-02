@@ -76,10 +76,13 @@ class MikuServer(object):
                     if not msg:
                         break
                     await websocket.send(msg)
+                # 服务端停止发送
                 log.info('websocket send close')
 
             async def check_end():
-                if await asyncio.to_thread(result.get):
+                res = await asyncio.to_thread(result.get)
+                log.info(f'进程运行完毕：{res}')
+                if res:
                     await websocket.close()
 
             tasks: List[Task] = [asyncio.create_task(recv_msg()), asyncio.create_task(send_msg())]

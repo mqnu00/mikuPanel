@@ -104,7 +104,9 @@ class TerminalComponent(BaseComponent):
                     communication.share.send_queue.put(next(gen))
                 except StopIteration:
                     break
+            # chan close
             communication.share.send_queue.put(None)
+            communication.share.recv_queue.put(None)
             log.info('send done')
 
         from concurrent.futures import ThreadPoolExecutor
