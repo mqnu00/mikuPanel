@@ -1,6 +1,7 @@
 # 启动 WebSocket 服务器
 import asyncio
 import json
+import multiprocessing
 import pprint
 import uuid
 from asyncio import Task
@@ -24,6 +25,7 @@ class MikuServer(object):
         self.server: Server = None
 
     def start(self):
+        multiprocessing.current_process().name = 'Server'
         loop = asyncio.get_event_loop()
         task = loop.create_task(self._prepare_server())
         loop.run_until_complete(task)
