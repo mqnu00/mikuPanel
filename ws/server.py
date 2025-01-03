@@ -90,6 +90,9 @@ class MikuServer(object):
             tasks: List[Task] = [asyncio.create_task(recv_msg()), asyncio.create_task(send_msg())]
             await asyncio.gather(*tasks, check_end())
 
+            # 回收IPC
+            del communication.share[uid]
+
         except websockets.exceptions.ConnectionClosed:
             log.info('server closed by client')
         except Exception:
