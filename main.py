@@ -81,12 +81,6 @@ async def disk_info(websocket: WebSocket):
 
 
 
-from fastapi import FastAPI, WebSocket
-import subprocess
-import base64
-import json
-
-app = FastAPI()
 
 class ConnectionManager:
     def __init__(self):
