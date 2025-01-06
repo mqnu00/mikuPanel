@@ -1,0 +1,5 @@
+httpx==0.28.1
+paramiko==3.5.0
+Rx==3.2.0
+transitions==0.9.2
+websockets==14.1
