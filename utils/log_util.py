@@ -1,5 +1,6 @@
 import multiprocessing
 import logging
+import sys
 from logging.handlers import TimedRotatingFileHandler
 import os
 from datetime import datetime
@@ -32,6 +33,7 @@ def setup_logger(
     # 创建 logger
     logger = logging.getLogger(name)
     logger.setLevel(level)
+    # logger.currentframe = lambda: sys._getframe(4)
 
     # 创建日志格式器
     formatter = logging.Formatter(
