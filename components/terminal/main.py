@@ -1,4 +1,6 @@
 import asyncio
+import json
+import threading
 from typing import Dict
 
 from websockets.asyncio.server import ServerConnection
@@ -14,59 +16,51 @@ import uuid
 class TerminalComponent(BaseComponent):
 
     def __init__(self):
-        terminals: Dict[str, Terminal] = {}
-
-        self.config = Config(
-            instance={
-                "terminals": terminals
-            },
-            is_async=False
-        )
+        self.terminals: Dict[str, Terminal] = {}
 
     def create_terminal(self, info, *args, **kwargs):
         terminal = Terminal(info)
         terminal.connect_to_terminal()
 
-        terminals: Dict[str, Terminal] = self.config.instance.get('terminals')
         uid = str(uuid.uuid1())
-        terminals['123'] = terminal
+        self.terminals[uid] = terminal
         return uid
 
     def check_terminal(self, uid, *args, **kwargs) -> Terminal | bool:
         try:
-            terminal: Terminal = self.config.instance.get('terminals').get(uid)
-            return terminal
+            return self.terminals.get(uid)
         except IndexError:
+            log.info(f"no terminal index is {uid}")
             return False
         except Exception:
+            log.exception("unknown exc")
             return False
 
     def get_terminal(self, uid, *args, **kwargs):
         return self.check_terminal(uid)
 
     def del_terminal(self, uid: str, *args, **kwargs):
-        terminal: Terminal = self.config.instance.get('terminals')[uid]
-        terminal.close()
-        del self.config.instance.get('terminals')[uid]
+        terminal: Terminal = self.get_terminal(uid)
+        if terminal:
+            terminal.close()
+            del self.terminals[uid]
+            return True
+        else:
+            log.info(f"terminal {uid} not exist")
+            return False
 
     def send(self, uid: str, msg: str, *args, **kwargs):
-        try:
-            terminal: Terminal = self.config.instance.get('terminals')[uid]
-        except Exception:
-            return False
+        terminal: Terminal = self.get_terminal(uid)
         # None client 连接中断
         if not msg or not terminal.send_to_terminal(msg):
-            try:
-                self.del_terminal(uid)
-            except Exception:
-                log.exception('close terminal error')
+            self.del_terminal(uid)
             return False
         return True
 
     def recv(self, uid: str, *args, **kwargs):
         while True:
             try:
-                terminal: Terminal = self.config.instance.get('terminals')[uid]
+                terminal: Terminal = self.get_terminal(uid)
                 res = terminal.recv_from_terminal()
                 if not res:
                     break
@@ -79,29 +73,82 @@ class TerminalComponent(BaseComponent):
     def handle(self):
         from components.terminal.terminal import SSHInfo, Terminal
         from tests import server_password
-        self.create_terminal(SSHInfo(
-            host=server_password.host,
-            port=server_password.port,
-            username=server_password.username,
-            password=server_password.password
-        ))
 
         def receive():
 
             while True:
                 if not communication.share.recv_queue.empty():
+
                     msg = communication.share.recv_queue.get()
-                    if not self.send('123', msg):
+                    # websocket 连接关闭
+                    if not msg:
+                        uids = list(self.terminals.keys())
+                        for uid in uids:
+                            self.del_terminal(uid)
                         break
-                if not self.check_terminal('123'):
-                    break
+                    info: dict = json.loads(msg)
+                    do_info = info.get('do')
+
+                    if do_info == 'create':
+                        # create terminal return uid
+                        # msg = {
+                        #     "do": "create",
+                        #     "data": {
+                        #         "host": "",
+                        #         "port": 22,
+                        #         "username": "",
+                        #         "password": ""
+                        #     }
+                        # }
+
+                        uid = self.create_terminal(SSHInfo(
+                            host=server_password.host,
+                            port=server_password.port,
+                            username=server_password.username,
+                            password=server_password.password
+                        ))
+                        communication.share.send_queue.put(json.dumps({
+                            "do_return": "create",
+                            "data": {
+                                "uid": uid
+                            }
+                        }))
+
+                        gen = self.recv(uid)
+                        recv_thread = threading.Thread(target=send_to, args=(gen, uid))
+                        recv_thread.start()
+
+                    elif do_info == 'send':
+                        # send msg return 成功 失败
+                        # msg = {
+                        #     "do": "send",
+                        #     "data": {
+                        #         "uid": "",
+                        #         "msg": ""
+                        #     }
+                        # }
+
+                        data: dict = info.get('data')
+                        uid = data.get('uid')
+                        msg = data.get('msg')
+                        if not self.send(uid, msg):
+                            break
+                        if not self.check_terminal(uid):
+                            break
+
             log.info("recv done")
 
-        def send_to():
-            gen = self.recv('123')
+        def send_to(gen, uid):
+
             while True:
                 try:
-                    communication.share.send_queue.put(next(gen))
+                    communication.share.send_queue.put(json.dumps({
+                        "do_return": "send",
+                        "data": {
+                            "uid": uid,
+                            "msg": next(gen)
+                        }
+                    }))
                 except StopIteration:
                     break
             # chan close
@@ -109,8 +156,6 @@ class TerminalComponent(BaseComponent):
             communication.share.recv_queue.put(None)
             log.info('send done')
 
-        from concurrent.futures import ThreadPoolExecutor
-        thread_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="terminal_")
-        recv_future = thread_pool.submit(receive)
-        send_future = thread_pool.submit(send_to)
-        thread_pool.shutdown()
+        thread = threading.Thread(target=receive)
+        thread.start()
+        thread.join()
