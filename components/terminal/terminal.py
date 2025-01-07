@@ -31,12 +31,11 @@ class Terminal(object):
         if self.chan.closed:
             return False
         else:
-            recv_info: dict = json.loads(msg)
-            recv_type = recv_info.get('type')
+            recv_type = msg.get('type')
             if recv_type == 'resize':
-                self.chan.resize_pty(width=recv_info.get("cols"), height=recv_info.get("rows"))
+                self.chan.resize_pty(width=msg.get("cols"), height=msg.get("rows"))
             elif recv_type == 'cmd':
-                self.chan.send(recv_info.get('msg').encode('utf8'))
+                self.chan.send(msg.get('msg').encode('utf8'))
             if self.chan.closed:
                 return False
             return True

@@ -1,6 +1,8 @@
 import asyncio
 import json
+import pprint
 import threading
+import traceback
 from typing import Dict
 
 from websockets.asyncio.server import ServerConnection
@@ -42,6 +44,7 @@ class TerminalComponent(BaseComponent):
     def del_terminal(self, uid: str, *args, **kwargs):
         terminal: Terminal = self.get_terminal(uid)
         if terminal:
+            log.info(traceback.format_stack())
             terminal.close()
             del self.terminals[uid]
             return True
@@ -52,6 +55,8 @@ class TerminalComponent(BaseComponent):
     def send(self, uid: str, msg: str, *args, **kwargs):
         terminal: Terminal = self.get_terminal(uid)
         # None client 连接中断
+        if not terminal:
+            return False
         if not msg or not terminal.send_to_terminal(msg):
             self.del_terminal(uid)
             return False
@@ -65,6 +70,8 @@ class TerminalComponent(BaseComponent):
                 if not res:
                     break
                 yield res
+            except TimeoutError:
+                log.info("recv timeout")
             except Exception:
                 log.exception("recv_error")
                 continue
@@ -136,24 +143,38 @@ class TerminalComponent(BaseComponent):
                         if not self.check_terminal(uid):
                             break
 
+                    elif do_info == 'delete':
+
+                        data: dict = info.get('data')
+                        uid = data.get('uid')
+                        self.del_terminal(uid)
+
             log.info("recv done")
 
         def send_to(gen, uid):
 
             while True:
                 try:
+                    msg = next(gen)
                     communication.share.send_queue.put(json.dumps({
                         "do_return": "send",
                         "data": {
                             "uid": uid,
-                            "msg": next(gen)
+                            "msg": msg
                         }
                     }))
                 except StopIteration:
                     break
             # chan close
-            communication.share.send_queue.put(None)
-            communication.share.recv_queue.put(None)
+            # communication.share.send_queue.put(None)
+            # communication.share.recv_queue.put(None)
+            self.del_terminal(uid)
+            communication.share.send_queue.put(json.dumps({
+                "do_return": "delete",
+                "data": {
+                    "uid": uid
+                }
+            }))
             log.info('send done')
 
         thread = threading.Thread(target=receive)
