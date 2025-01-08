@@ -45,8 +45,12 @@ class TerminalComponent(BaseComponent):
         terminal: Terminal = self.get_terminal(uid)
         if terminal:
             log.info(traceback.format_stack())
+            log.info(uid)
             terminal.close()
-            del self.terminals[uid]
+            try:
+                del self.terminals[uid]
+            except KeyError:
+                log.info(f"{uid} already delete")
             return True
         else:
             log.info(f"terminal {uid} not exist")
