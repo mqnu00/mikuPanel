@@ -160,6 +160,7 @@ class TerminalComponent(BaseComponent):
             while True:
                 try:
                     msg = next(gen)
+                    # todo 无法处理不可序列化的二进制数据
                     communication.share.send_queue.put(json.dumps({
                         "do_return": "send",
                         "data": {
