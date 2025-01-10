@@ -37,3 +37,23 @@ def init_ipc(info: str = None):
         # 保证 manager 只有一个
         global manager
         manager = multiprocessing.Manager()
+
+
+def init_sql():
+    from sqlalchemy import create_engine
+    from utils.log_util import setup_logger
+
+    sql_log = setup_logger(
+        name='sqlalchemy.engine',
+        log_dir=rf'D:\program\python\code\mikuPanelGrpc\logs\test123'
+    )
+    sql_engine = create_engine("mysql+pymysql://root:123456@localhost/mikuserver?charset=utf8", pool_size=4)
+    with sql_engine.connect() as conn:
+        result = conn.execute("SELECT * FROM test_2")
+        for row in result:
+            print(row)
+    # sql_engine.logger = sql_log
+
+
+if __name__ == '__main__':
+    init_sql()
