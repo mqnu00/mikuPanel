@@ -8,7 +8,7 @@ from typing import Dict
 from websockets.asyncio.server import ServerConnection
 
 from components.base_component import BaseComponent
-from components.terminal.terminal import Terminal
+from components.terminal.terminal import Terminal, SSHInfo
 from core.component_init import Config
 from utils.log_util import log
 from core import communication
@@ -18,6 +18,10 @@ import uuid
 class TerminalComponent(BaseComponent):
 
     def __init__(self):
+        self.config = Config(
+            is_need_sql=True,
+            sql_tabel=[SSHInfo]
+        )
         self.terminals: Dict[str, Terminal] = {}
 
     def create_terminal(self, info, *args, **kwargs):

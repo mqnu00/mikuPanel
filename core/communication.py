@@ -7,6 +7,7 @@ from multiprocessing import Manager
 from multiprocessing.managers import SyncManager
 from multiprocessing.pool import Pool
 from sqlalchemy import create_engine, MetaData, Table, select, Engine
+from sqlalchemy.orm import declarative_base, DeclarativeBase
 from utils.log_util import setup_logger
 
 
@@ -21,6 +22,7 @@ class Message(object):
 manager: SyncManager = None
 share: dict[str, Message] | Message = {}
 process_pool: Pool = None
+SqlBase: DeclarativeBase = None
 sql_engine: Engine = None
 
 
@@ -52,6 +54,10 @@ def init_sql(num: int):
     global sql_engine
     sql_engine = create_engine("mysql+pymysql://root:123456@localhost/mikuserver?charset=utf8", pool_size=num)
 
+    global SqlBase
+    SqlBase = declarative_base()
+    print(SqlBase)
+
 
 if __name__ == '__main__':
-    init_sql()
+    init_sql(4)
