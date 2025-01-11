@@ -45,6 +45,7 @@ def init_ipc(info: str = None):
         manager = multiprocessing.Manager()
 
 
+# todo single_sql_process
 def init_sql(num: int):
 
     sql_log = setup_logger(
