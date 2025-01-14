@@ -1,6 +1,6 @@
 import json
 
-from sqlalchemy import Integer, Column, DateTime, String
+from sqlalchemy import Integer, Column, DateTime, String, select
 
 from utils.log_util import log
 import paramiko
@@ -25,6 +25,11 @@ class SSHInfo(communication.SqlBase):
     port = Column(Integer)
     username = Column(String(length=30))
     password = Column(String(length=128))
+
+    def select_all(self):
+        query = select(self.__class__)
+        res = communication.sql_engine.execute(query)
+        return res
 
 
 class Terminal(object):

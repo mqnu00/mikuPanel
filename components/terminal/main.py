@@ -20,7 +20,7 @@ class TerminalComponent(BaseComponent):
     def __init__(self):
         self.config = Config(
             is_need_sql=True,
-            sql_tabel=[SSHInfo]
+            sql_tabel=['components.terminal.terminal.SSHInfo']
         )
         self.terminals: Dict[str, Terminal] = {}
 
