@@ -6,6 +6,7 @@ from utils.log_util import setup_logger
 from sqlalchemy import create_engine, Engine, select, Executable, text, insert, Column, Integer, String, Row
 from sqlalchemy.orm import Query, declarative_base, DeclarativeBase, sessionmaker
 from multiprocessing.managers import SyncManager
+import pymysql
 
 
 class Message(object):
