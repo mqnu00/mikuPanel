@@ -14,6 +14,7 @@ def action_dispatch(msg: str):
     communication.init_ipc(uid)
 
     module = importlib.import_module('.'.join([resolve_msg['dir'], resolve_msg['module']]))
+    log.info(module)
     result = communication.process_pool.apply_async(func=module.execute,
                                                     args=(component_name, communication.share.get(uid)))
     return uid, result

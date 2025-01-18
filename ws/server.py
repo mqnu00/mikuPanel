@@ -29,7 +29,6 @@ class MikuServer(object):
         loop = asyncio.get_event_loop()
         task = loop.create_task(self._prepare_server())
         loop.run_until_complete(task)
-        pass
 
     async def _prepare_server(self):
         async def start_server():
@@ -58,6 +57,7 @@ class MikuServer(object):
             from core.message.action.dispatch import action_dispatch
             uid: str
             result: ApplyResult
+            log.info('dispatch')
             uid, result = await asyncio.to_thread(action_dispatch, msg)
             log.info(uid)
 

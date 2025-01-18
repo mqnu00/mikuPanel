@@ -4,7 +4,8 @@ from sqlalchemy import Integer, Column, DateTime, String, select
 
 from utils.log_util import log
 import paramiko
-from core import communication
+from core import communication, sqlEngine
+# from core.sqlEngine import
 
 
 # class SSHInfo(object):
@@ -16,7 +17,7 @@ from core import communication
 #         self.password = password
 
 
-class SSHInfo(communication.SqlBase):
+class SSHInfo(sqlEngine.sql_engine.SqlBase):
 
     __tablename__ = 'SSHInfo'
     id = Column(Integer, primary_key=True)

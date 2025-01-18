@@ -4,7 +4,7 @@ from typing import List
 class Config(object):
 
     def __init__(self,
-                 sql_table: List[str],
+                 sql_table: List[str] = None,
                  is_need_sql: bool = False,
                  is_async: bool = False):
         # self.instance = instance

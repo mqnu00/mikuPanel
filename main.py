@@ -1,5 +1,8 @@
 import asyncio
 import multiprocessing
+
+from sqlalchemy import Column, Integer, String, insert
+
 from core import communication
 
 from ws.server import MikuServer
