@@ -1,15 +1,19 @@
+import asyncio
 import importlib
 import logging
 import multiprocessing
 from multiprocessing.pool import Pool
 
 from sqlalchemy.exc import InvalidRequestError, SQLAlchemyError
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from utils.log_util import setup_logger
 from sqlalchemy import create_engine, Engine, select, Executable, text, insert, Column, Integer, String, Row, inspect
 from sqlalchemy.orm import Query, declarative_base, DeclarativeBase, sessionmaker
 from multiprocessing.managers import SyncManager
 import pymysql
+import aiomysql
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class SqlEngine(object):
@@ -34,12 +38,21 @@ class SqlEngine(object):
                          thread_num: int = 4):
 
         self.sql_log = setup_logger(
-            name='sqlalchemy.engine',
+            name='sqlalchemy.engine.Engine.sync_engine',
             log_dir=rf'D:\program\python\code\mikuPanelGrpc\logs\sql_engine{multiprocessing.current_process().name}'
+        )
+        self.sql_async_log = setup_logger(
+            name='sqlalchemy.engine.Engine.async_engine',
+            log_dir=rf'D:\program\python\code\mikuPanelGrpc\logs\sql_async_engine{multiprocessing.current_process().name}'
         )
 
         self.sql_engine = create_engine(
-            f"{sql_type}+{sql_package}://{username}:{password}@{host}/{dbname}?charset={charset}", pool_size=thread_num)
+            f"{sql_type}+{sql_package}://{username}:{password}@{host}/{dbname}?charset={charset}", pool_size=thread_num,
+            logging_name='sync_engine')
+        self.sql_async_engine = create_async_engine(
+            f"{sql_type}+aiomysql://{username}:{password}@{host}/{dbname}?charset={charset}",
+            logging_name='async_engine')
+        # print(self.sql_engine_async.logging_name)
 
         self.SqlBase: DeclarativeBase = declarative_base()
         self.inspector = inspect(self.sql_engine)
@@ -49,6 +62,8 @@ class SqlEngine(object):
                       auto_flush=False):
 
         self.session_maker = sessionmaker(autocommit=auto_commit, autoflush=auto_flush, bind=self.sql_engine)
+        self.session_maker_async = sessionmaker(autocommit=auto_commit, autoflush=auto_flush,
+                                                bind=self.sql_async_engine, class_=AsyncSession)
 
     def create_table(self, package: str, tables: list[str]):
         exist_tables = self.get_tables()
@@ -61,6 +76,9 @@ class SqlEngine(object):
 
     def get_session(self):
         return self.session_maker()
+
+    def get_async_session(self) -> AsyncSession:
+        return self.session_maker_async()
 
     def get_tables(self):
         return self.inspector.get_table_names()
@@ -107,3 +125,4 @@ sql_engine = SqlEngine(
 #     session = sql_engine.get_session()
 #     p1 = multiprocessing.Process(target=sql_test, args=(session,))
 #     p1.start()
+# print(logging.Logger.manager.loggerDict)
