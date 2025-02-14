@@ -2,19 +2,21 @@ import asyncio
 import importlib
 import logging
 import multiprocessing
+import sys
 from multiprocessing.pool import Pool
 
 from sqlalchemy.exc import InvalidRequestError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from utils.log_util import setup_logger
-from sqlalchemy import create_engine, Engine, select, Executable, text, insert, Column, Integer, String, Row, inspect
+from sqlalchemy import create_engine, Engine, Executable, text, insert, Column, Integer, String, Row, inspect
 from sqlalchemy.orm import Query, declarative_base, DeclarativeBase, sessionmaker
 from multiprocessing.managers import SyncManager
 import pymysql
 import aiomysql
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core import communication
 
 class SqlEngine(object):
 
@@ -117,12 +119,74 @@ sql_engine = SqlEngine(
     password='123456'
 )
 
-# def sql_test(session):
-#     result = session.execute(text("SELECT * FROM test_2"))
-#     print(result)
-#
-# if __name__ == '__main__':
-#     session = sql_engine.get_session()
-#     p1 = multiprocessing.Process(target=sql_test, args=(session,))
-#     p1.start()
-# print(logging.Logger.manager.loggerDict)
+
+def connect_sql(
+        module_name,
+        cls_name,
+        func,
+        *args,
+        **kwargs
+):
+    """
+
+    :param module_name: 数据表所在模块
+    :param func: 执行函数名
+    :param args: 执行函数所需参数
+    :param kwargs:
+    :return: 绝对路径
+    """
+    print(args)
+    print(kwargs)
+    import importlib
+    table_module = importlib.import_module(module_name)
+    table_cls = getattr(table_module, cls_name)
+    table_method = getattr(table_cls, func)
+    print(table_module)
+    print(table_cls)
+    print(table_method)
+    return table_method(*args, **kwargs)
+
+
+def connect_sql_async(
+        module_name,
+        cls_name,
+        func,
+        *args,
+        **kwargs
+):
+    sql_engine.sql_async_log.info("???")
+    print(args)
+    print(kwargs)
+    import importlib
+    import asyncio
+    table_module = importlib.import_module(module_name)
+    table_cls = getattr(table_module, cls_name)
+    table_method = getattr(table_cls, func)
+    print(table_module)
+    print(table_cls)
+    print(table_method)
+    loop = asyncio.get_event_loop()
+    result = loop.run_until_complete(table_method(*args, **kwargs))
+    return result
+
+
+def read_task_from_pipe():
+    msg = communication.share.read(communication.share['sql'])
+
+
+if __name__ == '__main__':
+
+
+    # print(connect_sql('componentSql.user',
+    #             'UserInfo',
+    #             'select_by_username',
+    #             username='mqnu00'))
+
+    # print(connect_sql_async('componentSql.user',
+    #             'UserInfo',
+    #             'select_by_username',
+    #             username='mqnu00'))
+    print(connect_sql_async('componentSql.user',
+                'UserInfo',
+                'create_user',
+                username='4343', password='5656'))
