@@ -55,7 +55,7 @@ class Mission(object):
     def __init__(self):
         self.obs = Subject()
         self.obs.subscribe(
-            on_next=lambda info: log.info('mission状态切换为：info')
+            on_next=lambda info: log.info(f'mission状态切换为：{info}')
         )
         pass
 
