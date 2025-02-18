@@ -3,9 +3,7 @@ import multiprocessing
 from multiprocessing.pool import Pool
 from multiprocessing.managers import SyncManager
 from multiprocessing import Queue
-from core.sqlEngine import SqlEngine
 import asyncio
-
 
 class Message(object):
 
@@ -34,9 +32,8 @@ class Message(object):
 
 
 manager: SyncManager = None
-share: dict[str, Message] | Message = {}
+share: dict = {}
 process_pool: Pool = None
-sql_engine: SqlEngine = None
 
 
 def pool_initializer():
@@ -58,18 +55,19 @@ def init_ipc(info: str = None):
         manager = multiprocessing.Manager()
 
 
-# todo single_sql_process_communication
+# todo single_sql_thread
+# share.sql.uid from users
 def init_sql():
-    global sql_engine
     global share
-    from core import sqlEngine
-    sql_engine = sqlEngine.sql_engine
     share['sql'] = Message()
+    from core.sqlEngine import sql_engine
+    sql_engine.start()
 
 
 if __name__ == '__main__':
     from components.terminal.terminal import SSHInfo
-    # init_ipc()
+
+    init_ipc()
     # init_sql(4)
     #
     #
