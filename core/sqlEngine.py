@@ -113,6 +113,10 @@ class SqlEngine(object):
 
                     return result.rowcount
 
+        # todo sql_service
+        def start():
+            pass
+
 
 sql_engine = SqlEngine(
     username='root',
