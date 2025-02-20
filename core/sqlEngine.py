@@ -4,10 +4,12 @@ import logging
 import multiprocessing
 import sys
 from multiprocessing.pool import Pool
+from typing import List
 
 from sqlalchemy.exc import InvalidRequestError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from core.service import Service
 from utils.log_util import setup_logger
 from sqlalchemy import create_engine, Engine, Executable, text, insert, Column, Integer, String, Row, inspect
 from sqlalchemy.orm import Query, declarative_base, DeclarativeBase, sessionmaker
@@ -17,6 +19,8 @@ import aiomysql
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import communication
+from core.communication import Message
+
 
 class SqlEngine(object):
 
@@ -178,9 +182,30 @@ def read_task_from_pipe():
     msg = communication.share.read(communication.share['sql'])
 
 
+# todo sql_service
+class SqlService(Service):
+
+    def __init__(self, loop):
+        super().__init__(loop)
+        self.messages: dict[str, Message] = {}
+
+    def __config(self):
+        self.messages = communication.share['sql']
+
+    def __pending(self):
+
+        while True:
+            for uid, message in self.messages.items():
+                if message.read(is_async=True):
+                    self.working()
+
+
+from core.LoopManager import Loop
+
+sql_loop = Loop.create(thread_name='SqlEngine')
+sql_service = SqlService(loop=sql_loop)
+
 if __name__ == '__main__':
-
-
     # print(connect_sql('componentSql.user',
     #             'UserInfo',
     #             'select_by_username',
@@ -191,6 +216,6 @@ if __name__ == '__main__':
     #             'select_by_username',
     #             username='mqnu00'))
     print(connect_sql_async('componentSql.user',
-                'UserInfo',
-                'create_user',
-                username='4343', password='5656'))
+                            'UserInfo',
+                            'create_user',
+                            username='4343', password='5656'))
