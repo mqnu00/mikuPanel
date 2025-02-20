@@ -5,9 +5,11 @@ from multiprocessing.managers import SyncManager
 from multiprocessing import Queue
 import asyncio
 
+
 class Message(object):
 
-    def __init__(self):
+    def __init__(self, role: str):
+        self.role = role
         self.action_info = manager.dict()
         self.recv_queue = manager.Queue()
         self.send_queue = manager.Queue()
@@ -15,16 +17,37 @@ class Message(object):
     # todo ipc format read write
 
     @staticmethod
-    def read(q: Queue, is_async=True):
-        if is_async:
-            loop = asyncio.get_event_loop()
-            msg = loop.run_until_complete(asyncio.to_thread(q.get()))
-        else:
+    async def read_queue_async(q: Queue):
+        while True:
             try:
-                msg = q.get_nowait()
+                return q.get_nowait()
             except Exception:
-                return False
-        return msg
+                await asyncio.sleep(0)
+
+    @staticmethod
+    def read_queue_sync(q: Queue):
+        return q.get()
+
+    @staticmethod
+    async def send_queue_async(q: Queue, msg):
+        while True:
+            try:
+                q.put_nowait(msg)
+                return True
+            except Exception:
+                await asyncio.sleep(0)
+
+    @staticmethod
+    def send_queue_sync(q: Queue, msg):
+        q.put(msg)
+        return True
+
+    def read(self, is_sync: bool = True):
+        if self.role == 'responser':
+            if is_sync:
+                return self.read_queue_sync(self.recv_queue)
+            else:
+                return self.read_queue_async(self.recv_queue)
 
     @staticmethod
     def write():
@@ -55,13 +78,10 @@ def init_ipc(info: str = None):
         manager = multiprocessing.Manager()
 
 
-# todo single_sql_thread
 # share.sql.uid from users
 def init_sql():
     global share
     share['sql'] = Message()
-    from core.sqlEngine import sql_engine
-    sql_engine.start()
 
 
 if __name__ == '__main__':
