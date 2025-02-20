@@ -1,3 +1,4 @@
+import asyncio
 import multiprocessing
 from enum import Enum
 from typing import ClassVar, List
@@ -5,6 +6,9 @@ from typing import ClassVar, List
 from rx.subject import Subject
 from rx import operators as ops
 from transitions import Machine, EventData
+
+from core.LoopManager import Loop
+from core.communication import Message
 from utils.log_util import log
 
 
@@ -17,6 +21,7 @@ class ServiceState(Enum):
     ERROR = 6
 
 
+# todo state_change
 class Service(object):
     _initial_state: ClassVar[ServiceState] = ServiceState.IDLE
     _transitions: ClassVar[List] = [
@@ -26,13 +31,12 @@ class Service(object):
             'dest': ServiceState.CONFIG,
         },
         {
-            'trigger': 'pend',
+            'trigger': 'pending',
             'source': [ServiceState.CONFIG, ServiceState.WORKING],
             'dest': ServiceState.PENDING,
-            'conditions': 'is_config'
         },
         {
-            'trigger': 'work',
+            'trigger': 'working',
             'source': ServiceState.PENDING,
             'dest': ServiceState.WORKING
         },
@@ -49,12 +53,41 @@ class Service(object):
         }
     ]
 
-    def __init__(self):
+    def __init__(self, loop: Loop):
+        self.messages: dict[str: Message] = {}
+        self.is_config = False
+        self.loop = loop
         self.obs = Subject()
-        self.obs.subscribe(lambda msg: log.info(f'{msg}'))
+        self.obs.subscribe(lambda state: log.info(f'{state}'))
 
-    def _config(self):
+    async def __config(self):
         pass
+
+    def _config(self, event: EventData):
+        try:
+            result = self.loop.ensure_future(self.__config())
+        except Exception:
+            self.error()
+        finally:
+            self.pending()
+
+    def __pending(self):
+        pass
+
+    def _pending(self, event: EventData):
+        try:
+            self.__pending()
+        finally:
+            self.done()
+
+    def __working(self):
+        pass
+
+    def _working(self, event: EventData):
+        try:
+            self.__working()
+        finally:
+            self.pending()
 
     def consumer(self):
         pass
@@ -64,6 +97,10 @@ class Service(object):
 
     def handle(self):
         pass
+
+    def start(self):
+        print("???")
+        self.config()
 
     def state_change(self, event: EventData):
         self.obs.on_next(event.state.value)
@@ -81,6 +118,10 @@ class Service(object):
             after_state_change=service.state_change,
         )
         # machine.on_enter_CONNECTING('_connect')
+        machine.on_enter_CONFIG('_config')
+        machine.on_enter_PENDING('_pending')
+        machine.on_enter_WORKING('_working')
+        machine.on_enter_ERROR('_error')
         return service
 
 
@@ -145,6 +186,6 @@ def producer(queue):
 
 if __name__ == "__main__":
     # main()
-    service = Service.create()
-    service.config()
-    service.done()
+    loop = asyncio.get_event_loop()
+    service = Service.create(loop)
+    service.start()
