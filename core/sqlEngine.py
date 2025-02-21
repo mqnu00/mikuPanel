@@ -3,9 +3,11 @@ import importlib
 import logging
 import multiprocessing
 import sys
+import time
 from multiprocessing.pool import Pool
 from typing import List
 
+from rx.subject import Subject
 from sqlalchemy.exc import InvalidRequestError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -188,22 +190,31 @@ class SqlService(Service):
     def __init__(self, loop):
         super().__init__(loop)
         self.messages: dict[str, Message] = {}
+        self.is_config = False
+        self.config_obs = Subject()
+        self.config_obs.subscribe(lambda uid: self.config(uid=uid))
 
     def __config(self):
-        self.messages = communication.share['sql']
+        # 浅拷贝
+        # self.messages: dict[str, Message] = communication.share['sql']
+        # for k in self.messages:
+        #     self.messages[k].set_role(1)
+        future = self.loop.create_future()
+        future.set_result(True)
+        return future
 
-    def __pending(self):
+    async def __pending(self):
+        time.sleep(1)
+        pass
 
-        while True:
-            for uid, message in self.messages.items():
-                if message.read(is_async=True):
-                    self.working()
+    async def __working(self):
+        pass
 
 
 from core.LoopManager import Loop
 
 sql_loop = Loop.create(thread_name='SqlEngine')
-sql_service = SqlService(loop=sql_loop)
+sql_service = SqlService.create(loop=sql_loop)
 
 if __name__ == '__main__':
     # print(connect_sql('componentSql.user',
@@ -215,7 +226,8 @@ if __name__ == '__main__':
     #             'UserInfo',
     #             'select_by_username',
     #             username='mqnu00'))
-    print(connect_sql_async('componentSql.user',
-                            'UserInfo',
-                            'create_user',
-                            username='4343', password='5656'))
+    # print(connect_sql_async('componentSql.user',
+    #                         'UserInfo',
+    #                         'create_user',
+    #                         username='4343', password='5656'))
+    sql_service.config_obs.on_next('112233')

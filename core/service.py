@@ -1,5 +1,7 @@
 import asyncio
 import multiprocessing
+import threading
+import traceback
 from enum import Enum
 from typing import ClassVar, List
 
@@ -48,7 +50,7 @@ class Service(object):
         {
             'trigger': 'error',
             'source': '*',
-            'dest': 'error',
+            'dest': ServiceState.ERROR,
             'after': '_error'
         }
     ]
@@ -65,41 +67,36 @@ class Service(object):
 
     def _config(self, event: EventData):
         try:
-            result = self.loop.ensure_future(self.__config())
-        except Exception:
+            result = self.loop.loop.create_task(self.__config())
+        except Exception as e:
+            traceback.print_exception(e)
             self.error()
-        finally:
+            return
+        else:
             self.pending()
 
-    def __pending(self):
+    async def __pending(self):
         pass
 
     def _pending(self, event: EventData):
         try:
-            self.__pending()
+            self.loop.loop.create_task(self.__pending())
         finally:
-            self.done()
+            self.working()
 
-    def __working(self):
+    async def __working(self):
         pass
 
     def _working(self, event: EventData):
         try:
-            self.__working()
+            self.loop.ensure_future(self.__working())
         finally:
             self.pending()
 
-    def consumer(self):
-        pass
-
-    def productor(self):
-        pass
-
-    def handle(self):
+    def _error(self, event):
         pass
 
     def start(self):
-        print("???")
         self.config()
 
     def state_change(self, event: EventData):
@@ -186,6 +183,6 @@ def producer(queue):
 
 if __name__ == "__main__":
     # main()
-    loop = asyncio.get_event_loop()
+    loop = Loop.create(thread_name=threading.current_thread().name)
     service = Service.create(loop)
     service.start()

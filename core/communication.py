@@ -8,7 +8,7 @@ import asyncio
 
 class Message(object):
 
-    def __init__(self, role: str):
+    def __init__(self, role: str = None):
         self.role = role
         self.action_info = manager.dict()
         self.recv_queue = manager.Queue()
@@ -19,9 +19,12 @@ class Message(object):
     @staticmethod
     async def read_queue_async(q: Queue):
         while True:
-            try:
-                return q.get_nowait()
-            except Exception:
+            if q.not_empty:
+                try:
+                    return q.get_nowait()
+                except Exception:
+                    await asyncio.sleep(0)
+            else:
                 await asyncio.sleep(0)
 
     @staticmethod
@@ -31,10 +34,13 @@ class Message(object):
     @staticmethod
     async def send_queue_async(q: Queue, msg):
         while True:
-            try:
-                q.put_nowait(msg)
-                return True
-            except Exception:
+            if q.not_full:
+                try:
+                    q.put_nowait(msg)
+                    return True
+                except Exception:
+                    await asyncio.sleep(0)
+            else:
                 await asyncio.sleep(0)
 
     @staticmethod
@@ -42,16 +48,48 @@ class Message(object):
         q.put(msg)
         return True
 
+    def set_role(self, role: int):
+        if role == 0:
+            self.role = 'sender'
+        else:
+            self.role = 'recipient'
+
+    def is_ready(self, check: str):
+        if self.role == 'recipient':
+            if check == 'recv':
+                return self.recv_queue.not_empty
+            else:
+                return self.send_queue.not_full
+
+        else:
+            if check == 'recv':
+                return self.send_queue.not_empty
+            else:
+                return self.recv_queue.not_full
+
     def read(self, is_sync: bool = True):
-        if self.role == 'responser':
+        if self.role == 'recipient':
             if is_sync:
                 return self.read_queue_sync(self.recv_queue)
             else:
                 return self.read_queue_async(self.recv_queue)
+        else:
+            if is_sync:
+                return self.read_queue_sync(self.send_queue)
+            else:
+                return self.read_queue_async(self.send_queue)
 
-    @staticmethod
-    def write():
-        pass
+    def write(self, is_sync: bool = True):
+        if self.role == 'recipient':
+            if is_sync:
+                return self.read_queue_sync(self.send_queue)
+            else:
+                return self.read_queue_async(self.send_queue)
+        else:
+            if is_sync:
+                return self.read_queue_sync(self.recv_queue)
+            else:
+                return self.read_queue_async(self.recv_queue)
 
 
 manager: SyncManager = None
