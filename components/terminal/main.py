@@ -85,16 +85,17 @@ class TerminalComponent(BaseComponent):
                 continue
         return False
 
-    def handle(self):
+    # todo coroutine
+    def handle(self, share_uid):
         from components.terminal.terminal import SSHInfo, Terminal
         from tests import server_password
 
         def receive():
 
             while True:
-                if not communication.share.recv_queue.empty():
+                if not communication.share[share_uid].recv_queue.empty():
 
-                    msg = communication.share.recv_queue.get()
+                    msg = communication.share[share_uid].recv_queue.get()
                     # websocket 连接关闭
                     if not msg:
                         uids = list(self.terminals.keys())
@@ -117,12 +118,15 @@ class TerminalComponent(BaseComponent):
                         # }
 
                         uid = self.create_terminal(SSHInfo(
-                            host=server_password.host,
-                            port=server_password.port,
-                            username=server_password.username,
-                            password=server_password.password
+                            **info.get('data')
                         ))
-                        communication.share.send_queue.put(json.dumps({
+                        # uid = self.create_terminal(SSHInfo(
+                        #     host=server_password.host,
+                        #     port=server_password.port,
+                        #     username=server_password.username,
+                        #     password=server_password.password
+                        # ))
+                        communication.share[share_uid].send_queue.put(json.dumps({
                             "do_return": "create",
                             "data": {
                                 "uid": uid
@@ -165,7 +169,7 @@ class TerminalComponent(BaseComponent):
                 try:
                     msg = next(gen)
                     # todo 无法处理不可序列化的二进制数据
-                    communication.share.send_queue.put(json.dumps({
+                    communication.share[share_uid].send_queue.put(json.dumps({
                         "do_return": "send",
                         "data": {
                             "uid": uid,
@@ -178,7 +182,7 @@ class TerminalComponent(BaseComponent):
             # communication.share.send_queue.put(None)
             # communication.share.recv_queue.put(None)
             self.del_terminal(uid)
-            communication.share.send_queue.put(json.dumps({
+            communication.share[share_uid].send_queue.put(json.dumps({
                 "do_return": "delete",
                 "data": {
                     "uid": uid
