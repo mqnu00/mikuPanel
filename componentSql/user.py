@@ -47,7 +47,7 @@ class UserInfo(sql_engine.SqlBase):
             return user
 
     @staticmethod
-    async def create_user(username, password):
+    async def register(username, password):
         userinfo = UserInfo(username=username, password=password)
         async with sql_engine.get_async_session() as session:
             try:
