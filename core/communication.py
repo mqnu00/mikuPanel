@@ -1,5 +1,6 @@
 from __future__ import annotations
 import multiprocessing
+from concurrent.futures import ThreadPoolExecutor
 from multiprocessing.pool import Pool
 from multiprocessing.managers import SyncManager
 from multiprocessing import Queue
@@ -8,8 +9,7 @@ import asyncio
 
 class Message(object):
 
-    def __init__(self, role: str = None):
-        self.role = role
+    def __init__(self):
         self.action_info = manager.dict()
         self.recv_queue = manager.Queue()
         self.send_queue = manager.Queue()
@@ -19,7 +19,7 @@ class Message(object):
     @staticmethod
     async def read_queue_async(q: Queue):
         while True:
-            if q.not_empty:
+            if not q.empty():
                 try:
                     return q.get_nowait()
                 except Exception:
@@ -34,7 +34,7 @@ class Message(object):
     @staticmethod
     async def send_queue_async(q: Queue, msg):
         while True:
-            if q.not_full:
+            if not q.full():
                 try:
                     q.put_nowait(msg)
                     return True
@@ -48,27 +48,21 @@ class Message(object):
         q.put(msg)
         return True
 
-    def set_role(self, role: int):
+    def is_ready(self, check: str, role):
         if role == 0:
-            self.role = 'sender'
-        else:
-            self.role = 'recipient'
-
-    def is_ready(self, check: str):
-        if self.role == 'recipient':
             if check == 'recv':
-                return self.recv_queue.not_empty
+                return not self.recv_queue.empty()
             else:
-                return self.send_queue.not_full
+                return not self.send_queue.full()
 
         else:
             if check == 'recv':
-                return self.send_queue.not_empty
+                return not self.send_queue.empty()
             else:
-                return self.recv_queue.not_full
+                return not self.recv_queue.full()
 
-    def read(self, is_sync: bool = True):
-        if self.role == 'recipient':
+    def read(self, role, is_sync: bool = True):
+        if role == 0:
             if is_sync:
                 return self.read_queue_sync(self.recv_queue)
             else:
@@ -79,22 +73,23 @@ class Message(object):
             else:
                 return self.read_queue_async(self.send_queue)
 
-    def write(self, is_sync: bool = True):
-        if self.role == 'recipient':
+    def write(self, content, role, is_sync: bool = True):
+        if role == 0:
             if is_sync:
-                return self.read_queue_sync(self.send_queue)
+                return self.send_queue_sync(self.send_queue, content)
             else:
-                return self.read_queue_async(self.send_queue)
+                return self.send_queue_async(self.send_queue, content)
         else:
             if is_sync:
-                return self.read_queue_sync(self.recv_queue)
+                return self.send_queue_sync(self.recv_queue, content)
             else:
-                return self.read_queue_async(self.recv_queue)
+                return self.send_queue_sync(self.recv_queue, content)
 
 
 manager: SyncManager = None
 share: dict = {}
 process_pool: Pool = None
+thread_pool: ThreadPoolExecutor = None
 
 
 def pool_initializer():
@@ -104,6 +99,16 @@ def pool_initializer():
 def init_pool(num: int):
     global process_pool
     process_pool = multiprocessing.Pool(num, initializer=pool_initializer, initargs=())
+
+
+def init_thread_pool(num: int = 10):
+    """
+    协程提交阻塞任务使用的线程池
+    :param num:
+    :return:
+    """
+    global thread_pool
+    thread_pool = ThreadPoolExecutor(max_workers=num)
 
 
 def init_ipc(info: str = None):
