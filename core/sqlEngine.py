@@ -1,15 +1,18 @@
 import asyncio
 import importlib
+import json
 import logging
 import multiprocessing
 import sys
 import time
+import uuid
 from multiprocessing.pool import Pool
 from typing import List
 
 from rx.subject import Subject
 from sqlalchemy.exc import InvalidRequestError, SQLAlchemyError
 from sqlalchemy.ext.asyncio import create_async_engine
+from transitions import EventData
 
 from core.service import Service
 from utils.log_util import setup_logger
@@ -24,6 +27,7 @@ from core import communication
 from core.communication import Message
 
 
+# todo 修改为组件
 class SqlEngine(object):
 
     def __init__(self,
@@ -78,8 +82,7 @@ class SqlEngine(object):
         for table in tables:
             if table in exist_tables:
                 self.sql_log.info(f'{table} already exists')
-                return
-        importlib.import_module(package)
+        importlib.import_module(f'componentSql.{package}')
         self.SqlBase.metadata.create_all(bind=self.sql_engine)
 
     def get_session(self):
@@ -169,14 +172,14 @@ def connect_sql_async(
     print(kwargs)
     import importlib
     import asyncio
-    table_module = importlib.import_module(module_name)
+    table_module = importlib.import_module(f'componentSql.{module_name}')
     table_cls = getattr(table_module, cls_name)
     table_method = getattr(table_cls, func)
     print(table_module)
     print(table_cls)
     print(table_method)
     loop = asyncio.get_event_loop()
-    result = loop.run_until_complete(table_method(*args, **kwargs))
+    result = loop.create_task(table_method(*args, **kwargs))
     return result
 
 
@@ -184,37 +187,106 @@ def read_task_from_pipe():
     msg = communication.share.read(communication.share['sql'])
 
 
+# class SqlService(Service):
+#
+#     def __init__(self, loop):
+#         super().__init__(loop)
+#         self.messages: dict[str, Message] = {}
+#         self.is_config = False
+#         self.config_obs = Subject()
+#         self.config_obs.subscribe(lambda uid: self.config(uid=uid))
+#
+#     def _config(self, event: EventData):
+#         # 浅拷贝
+#         # self.messages: dict[str, Message] = communication.share['sql']
+#         # for k in self.messages:
+#         #     self.messages[k].set_role(1)
+#         self.pending()
+#
+#     def _pending(self, event):
+#         for uid, msg in communication.share['sql'].items():
+#             msg: Message
+#             msg.set_role(1)
+#             if msg.is_ready(check='recv'):
+#                 result = self.working(msg=msg.read(is_sync=False))
+#                 msg.write(result)
+#
+#     def _working(self, event):
+#         msg = event.kwargs.get('msg')
+#         msg = json.loads(msg)
+#         return connect_sql_async(
+#             **msg
+#         )
+
+
 # todo sql_service
-class SqlService(Service):
+# todo 状态机管理
+class SqlService(object):
 
-    def __init__(self, loop):
-        super().__init__(loop)
-        self.messages: dict[str, Message] = {}
-        self.is_config = False
-        self.config_obs = Subject()
-        self.config_obs.subscribe(lambda uid: self.config(uid=uid))
+    def __init__(self):
+        self.uids = []
 
-    def __config(self):
-        # 浅拷贝
-        # self.messages: dict[str, Message] = communication.share['sql']
-        # for k in self.messages:
-        #     self.messages[k].set_role(1)
-        future = self.loop.create_future()
-        future.set_result(True)
-        return future
+    def add_msg(self):
 
-    async def __pending(self):
-        time.sleep(1)
-        pass
+        uid = f'sql-{uuid.uuid1()}'
+        communication.share[uid] = Message()
+        self.uids.append(uid)
+        return uid
 
-    async def __working(self):
-        pass
+    def del_msg(self, uid: str):
+        del communication.share[uid]
+        self.uids.remove(uid)
+        return True if communication.share['sql'].get(uid, None) else False
+
+    async def execute_sql(self, uid):
+        """
+        具体执行组件所需的sql命令
+        调用的sql应当在componentSql包定义好
+        :param uid:
+        :return:
+        """
+        sql_msg_role = 0
+        sql_msg: Message = communication.share[uid]
+        while True:
+            if not sql_msg.is_ready('recv', sql_msg_role):
+                await asyncio.sleep(0)
+            else:
+                msg = await sql_msg.read(role=sql_msg_role, is_sync=False)
+                sql_engine.sql_async_log.info(msg)
+                await connect_sql_async(**msg)
+
+    async def handle(self):
+        """
+        组件线程的数据库通信管道分配
+        :return:
+        """
+        sql_engine.sql_async_log.info("sql_handle")
+        sql_msg_role = 0
+        sql_msg: Message = communication.share['sql']
+        while True:
+            if not sql_msg.is_ready('recv', sql_msg_role):
+                await asyncio.sleep(0)
+            else:
+                msg = await sql_msg.read(role=sql_msg_role, is_sync=False)
+
+                if msg.get('do') == 'add':
+                    uid = self.add_msg()
+                    await sql_msg.write(uid, role=sql_msg_role, is_sync=False)
+                    sql_loop.loop.create_task(self.execute_sql(uid))
+                elif msg.get('do') == 'del':
+                    await sql_msg.write(self.del_msg(msg.get('uid')), role=sql_msg_role, is_sync=False)
+                elif msg.get('do') == 'create_table':
+                    sql_engine.sql_async_log.info(msg)
+                    sql_engine.create_table(**msg.get('data'))
+
+    def start(self):
+        sql_loop.loop.create_task(self.handle())
 
 
-from core.LoopManager import Loop
+from core.LoopManager import Loop, loop_manager
 
-sql_loop = Loop.create(thread_name='SqlEngine')
-sql_service = SqlService.create(loop=sql_loop)
+sql_loop = loop_manager.get_or_add_loop_threadsafe('sql_engine')
+sql_service = SqlService()
 
 if __name__ == '__main__':
     # print(connect_sql('componentSql.user',
@@ -230,4 +302,5 @@ if __name__ == '__main__':
     #                         'UserInfo',
     #                         'create_user',
     #                         username='4343', password='5656'))
-    sql_service.config_obs.on_next('112233')
+    # sql_service.config_obs.on_next('112233')
+    pass
