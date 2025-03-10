@@ -5,6 +5,7 @@ import multiprocessing
 import pprint
 import uuid
 from asyncio import Task
+from concurrent.futures import Future
 from multiprocessing.pool import ApplyResult
 from typing import Callable, Awaitable, List, Coroutine, Any
 
@@ -34,7 +35,7 @@ class MikuServer(object):
         async def start_server():
             # 在这里直接传递处理函数，它会自动提供 websocket 和 path 参数
             server = await websockets.serve(self.handle,
-                                            "localhost", self.port,
+                                            "0.0.0.0", self.port,
                                             max_size=50 * 1024 * 1024,
                                             process_request=self._process_requests,
                                             logger=log)
@@ -51,20 +52,17 @@ class MikuServer(object):
 
     async def handle(self, websocket: ServerConnection):
         try:
-            log.info('server.handle')
 
-            msg: str = await websocket.recv()
-            from core.message.action.dispatch import action_dispatch
             uid: str
-            result: ApplyResult
-            log.info('dispatch')
-            uid, result = await asyncio.to_thread(action_dispatch, msg)
-            log.info(uid)
+            check_status = False
+
 
             from core.communication import share
             from core import communication
 
             async def recv_msg():
+                while not check_status:
+                    await asyncio.sleep(0)
                 async for msg in websocket:
                     await asyncio.to_thread(communication.share[uid].recv_queue.put, msg)
                 # client 断开连接
@@ -72,6 +70,8 @@ class MikuServer(object):
                 log.info('websocket recv close')
 
             async def send_msg():
+                while not check_status:
+                    await asyncio.sleep(0)
                 while True:
                     msg = await asyncio.to_thread(communication.share[uid].send_queue.get)
                     # None 没有消息
@@ -82,16 +82,29 @@ class MikuServer(object):
                 log.info('websocket send close')
 
             async def check_end():
-                res = await asyncio.to_thread(result.get)
+                log.info('server.handle')
+
+                msg: str = await websocket.recv()
+                from core.message.action.dispatch import action_dispatch
+                future: Future
+                log.info('dispatch')
+                nonlocal uid
+                uid, future = await asyncio.to_thread(action_dispatch, msg)
+                log.info("测试dispatch输出")
+                log.info(uid)
+                log.info(future)
+                nonlocal check_status
+                check_status = True
+                res = await asyncio.to_thread(future.result)
                 log.info(f'进程运行完毕：{res}')
                 if res:
                     await websocket.close()
 
+                del communication.share[uid]
+            start_component_task = asyncio.create_task(check_end())
             tasks: List[Task] = [asyncio.create_task(recv_msg()), asyncio.create_task(send_msg())]
-            await asyncio.gather(*tasks, check_end())
+            await asyncio.gather(start_component_task, *tasks)
 
-            # 回收IPC
-            del communication.share[uid]
 
         except websockets.exceptions.ConnectionClosed:
             log.info('server closed by client')
