@@ -37,7 +37,7 @@ def setup_logger(
 
     # 创建日志格式器
     formatter = logging.Formatter(
-        '|%(asctime)s.%(msecs)03d|%(levelname)s|%(processName)s|pid: %(process)d|tid: %(thread)s|%(filename)s|%(funcName)s|Line %(lineno)d|%(message)s|',
+        '|%(asctime)s.%(msecs)03d|%(levelname)s|%(processName)s|%(threadName)s|pid: %(process)d|tid: %(thread)s|%(filename)s|%(funcName)s|Line %(lineno)d|%(message)s|',
         datefmt='%Y-%m-%d %H:%M:%S'  # 时间格式，不包含毫秒
     )
 
