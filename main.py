@@ -6,6 +6,7 @@ from sqlalchemy import Column, Integer, String, insert
 from core import communication
 
 from ws.server import MikuServer
+from core.LoopManager import loop_manager
 
 if __name__ == '__main__':
     multiprocessing.freeze_support()
