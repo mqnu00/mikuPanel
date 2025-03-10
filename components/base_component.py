@@ -9,5 +9,5 @@ class BaseComponent(object):
         self.config = Config()
         pass
 
-    def handle(self):
+    def handle(self, share_uid):
         pass
