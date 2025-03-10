@@ -18,9 +18,16 @@ def action_dispatch(msg: str):
 
     module = importlib.import_module('.'.join([resolve_msg['dir'], resolve_msg['module']]))
     log.info(module)
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(module.execute, args=(component_name, communication.share.get(uid)))  # 提交任务
-        result = future.result()  # 获取结果
-    # result = communication.process_pool.apply_async(func=module.execute,
-    #                                                 args=(component_name, communication.share.get(uid)))
-    return uid, result
+
+    executor = ThreadPoolExecutor(max_workers=1)
+    future = executor.submit(module.execute, component_name, uid)
+
+    return uid, future
+
+    # return module.execute(component_name, uid)
+    # with ThreadPoolExecutor(max_workers=1) as executor:
+    #     future = executor.submit(module.execute, component_name, uid)  # 提交任务
+    # # result = communication.process_pool.apply_async(func=module.execute,
+    # #                                                 args=(component_name, communication.share.get(uid)))
+    #     log.info("???")
+    #     return uid, future
