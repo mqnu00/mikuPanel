@@ -89,7 +89,7 @@ class TerminalComponent(BaseComponent):
     # todo 接收 do info 需要状态流转，比如还未 create 就不能 send
     def handle(self, share_uid):
         from components.terminal.terminal import SSHInfo, Terminal
-        from tests import server_password
+        # from tests import server_password
 
         def receive():
 
