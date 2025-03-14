@@ -15,7 +15,7 @@ if __name__ == '__main__':
     communication.init_pool(4)
     communication.init_sql()
 
-    from core.sqlEngine import sql_service
-    sql_service.start()
+    # from core.sqlEngine import sql_service
+    # sql_service.start()
     server = MikuServer(8000)
     server.start()
