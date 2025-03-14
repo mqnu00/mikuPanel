@@ -1,6 +1,7 @@
 import asyncio
 import sys
 import threading
+import time
 from asyncio import AbstractEventLoop, Future
 from threading import Thread
 
@@ -41,10 +42,11 @@ class Loop(object):
         asyncio.set_event_loop(loop)
 
         try:
+            log.info("loop running")
             loop.run_forever()
         finally:
-            log.info(asyncio.Task.all_tasks(loop))
-            loop.shutdown_asyncgens()
+            # log.info(asyncio.Task.all_tasks(loop))
+            # loop.shutdown_asyncgens()
             loop.close()
             end_callback()
 
@@ -118,7 +120,7 @@ class Loop(object):
         :param args:
         :return:
         """
-        future = self.loop.run_in_executor(func=func, executor=communication.thread_pool,*args)
+        future = self.loop.run_in_executor(func=func, executor=communication.thread_pool, *args)
         return future
 
 
@@ -178,6 +180,14 @@ class LoopManager(object):
 
 loop_manager = LoopManager()
 
-
 if __name__ == '__main__':
-    pass
+    loop = loop_manager.get_or_add_loop_threadsafe('test')
+
+
+    async def testt():
+        log.info('123')
+        tloop = asyncio.get_running_loop()
+        tloop.stop()
+
+
+    loop.run(testt())
