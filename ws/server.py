@@ -1,93 +1,69 @@
-# 启动 WebSocket 服务器
 import asyncio
 import json
-import multiprocessing
-import pprint
 import uuid
-from asyncio import Task
-from concurrent.futures import Future
-from multiprocessing.pool import ApplyResult
-from typing import Callable, Awaitable, List, Coroutine, Any
-
-import websockets
-from websockets import Headers
-from websockets.asyncio.connection import Connection
-from websockets.asyncio.server import ServerConnection, Server
-from websockets.http11 import Request, Response, SERVER
+from typing import List, Coroutine, Any
+from aiohttp import web
+from aiohttp.web_ws import WebSocketResponse, WSMsgType
 
 from mission import mission
 from utils.log_util import log
 
+# 假设 core 和其他模块已经适配为兼容 aiohttp
+from core.communication import share
+from core import communication
+from core.message.action.dispatch import action_dispatch
+
 
 class MikuServer(object):
-
     def __init__(self, port):
         self.port = port
-        self.server: Server = None
+        self.app = web.Application()
+        self.runner = None
 
     def start(self):
-        multiprocessing.current_process().name = 'Server'
         loop = asyncio.get_event_loop()
-        task = loop.create_task(self._prepare_server())
-        loop.run_until_complete(task)
+        loop.run_until_complete(self._prepare_server())
+        try:
+            loop.run_forever()
+        except KeyboardInterrupt:
+            loop.run_until_complete(self.stop())
+        finally:
+            loop.close()
 
     async def _prepare_server(self):
-        async def start_server():
-            # 在这里直接传递处理函数，它会自动提供 websocket 和 path 参数
-            server = await websockets.serve(self.handle,
-                                            "0.0.0.0", self.port,
-                                            max_size=50 * 1024 * 1024,
-                                            process_request=self._process_requests,
-                                            logger=log)
-            await server.start_serving()
-            log.info(f"WebSocket 服务器已启动，监听 ws://localhost:{self.port} 🎉")
-            self.server = server
-            await server.wait_closed()
+        async def handle_ws(request: web.Request):
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
 
-        return await start_server()
-
-    async def _process_requests(self, websocket: ServerConnection, request: Request):
-        if request.path != '/':
-            return Response(status_code=404, reason_phrase='Not Found', headers=Headers({}))
-
-    async def handle(self, websocket: ServerConnection):
-        try:
-
-            uid: str
+            uid: str = None
             check_status = False
 
-
-            from core.communication import share
-            from core import communication
-
             async def recv_msg():
+                nonlocal check_status
                 while not check_status:
                     await asyncio.sleep(0)
-                async for msg in websocket:
-                    await asyncio.to_thread(communication.share[uid].recv_queue.put, msg)
-                # client 断开连接
-                await asyncio.to_thread(communication.share[uid].recv_queue.put, None)
+                async for msg in ws:
+                    if msg.type == WSMsgType.TEXT:
+                        await asyncio.to_thread(communication.share[uid].recv_queue.put, msg.data)
+                    elif msg.type == WSMsgType.CLOSED:
+                        await asyncio.to_thread(communication.share[uid].recv_queue.put, None)
+                        break
                 log.info('websocket recv close')
 
             async def send_msg():
+                nonlocal check_status
                 while not check_status:
                     await asyncio.sleep(0)
                 while True:
                     msg = await asyncio.to_thread(communication.share[uid].send_queue.get)
-                    # None 没有消息
                     if not msg:
                         break
-                    await websocket.send(msg)
-                # 服务端停止发送
+                    await ws.send_str(msg)
                 log.info('websocket send close')
 
             async def check_end():
                 log.info('server.handle')
-
-                msg: str = await websocket.recv()
-                from core.message.action.dispatch import action_dispatch
-                future: Future
-                log.info('dispatch')
+                msg = await ws.receive_str()
                 nonlocal uid
                 uid, future = await asyncio.to_thread(action_dispatch, msg)
                 log.info("测试dispatch输出")
@@ -98,22 +74,53 @@ class MikuServer(object):
                 res = await asyncio.to_thread(future.result)
                 log.info(f'进程运行完毕：{res}')
                 if res:
-                    await websocket.close()
-
+                    await ws.close()
                 del communication.share[uid]
+
             start_component_task = asyncio.create_task(check_end())
-            tasks: List[Task] = [asyncio.create_task(recv_msg()), asyncio.create_task(send_msg())]
+            tasks: List[asyncio.Task] = [asyncio.create_task(recv_msg()), asyncio.create_task(send_msg())]
             await asyncio.gather(start_component_task, *tasks)
 
+            return ws
 
-        except websockets.exceptions.ConnectionClosed:
-            log.info('server closed by client')
-        except Exception:
+            # HTTP 路由
+        async def handle_http(request: web.Request):
+            return web.Response(text="Hello, this is the HTTP server!", content_type="text/plain")
 
-            log.exception('wrong')
+        async def router_config(request: web.Request):
+            log.info('路由设置')
+            ws = web.WebSocketResponse()
+            await ws.prepare(request)
+
+            # 模拟路由配置数据
+            routes = [
+                {"path": "/about", "name": "About", "component": "/src/plugins/1AboutView.vue"},
+            ]
+
+            # 将路由配置数据发送到前端
+            await ws.send_json({"type": "routes", "routes": routes})
+
+            await ws.close()
+
+            return ws
+
+        self.app.router.add_get('/', handle_ws)
+        self.app.router.add_get('/RouterConfig', router_config)
+        self.app.router.add_get('/http/{tail:.*}', handle_http)
+
+        runner = web.AppRunner(self.app)
+        await runner.setup()
+        site = web.TCPSite(runner, "0.0.0.0", self.port)
+        await site.start()
+        log.info(f"WebSocket 服务器已启动，监听 ws://localhost:{self.port} 🎉")
+        self.runner = runner
+
+    async def stop(self):
+        if self.runner:
+            await self.runner.cleanup()
+            log.info("WebSocket 服务器已关闭")
 
 
 if __name__ == '__main__':
-    # 启动主任务
     server = MikuServer(8000)
     server.start()
