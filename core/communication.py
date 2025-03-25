@@ -83,13 +83,15 @@ class Message(object):
             if is_sync:
                 return self.send_queue_sync(self.recv_queue, content)
             else:
-                return self.send_queue_sync(self.recv_queue, content)
+                return self.send_queue_async(self.recv_queue, content)
 
 
 manager: SyncManager = None
 share: dict = {}
+ctx: dict = {}
 process_pool: Pool = None
 thread_pool: ThreadPoolExecutor = None
+allow_router: bool = False
 
 
 def pool_initializer():
