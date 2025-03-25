@@ -1,0 +1,14 @@
+dockerManager:
+  version: 1.0.0
+  type: module
+  frontend: /src/views/dockerManager/DockerManager.vue
+  backend: components.dockerManager.main
+  path: /docker
+  menu:
+    label: 容器管理
+    key: go-to-docker
+    path: /docker
+  router:
+    name: DockerManager
+    path: /docker
+    component: /src/views/dockerManager/DockerManager.vue
