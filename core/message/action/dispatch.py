@@ -51,7 +51,7 @@ def action_dispatch(msg: str):
         log.info(uid)
         communication.init_ipc(uid)
 
-        module = importlib.import_module('.'.join([resolve_msg['dir'], resolve_msg['module']]))
+        module = importlib.import_module("core.message.action.component_config")
         log.info(module)
 
         executor = ThreadPoolExecutor(max_workers=1)

@@ -8,6 +8,16 @@ run:
   method: execute
   module: run
   name: run
+menu:
+  dir: core.message.action
+  method: execute
+  module: menu_config
+  name: menu_config
+component-config:
+  dir: core.message.action
+  method: execute
+  module: component_config
+  name: component_config
 connect-test:
   dir: core.message.action
   method: execute
