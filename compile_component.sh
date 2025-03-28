@@ -1,0 +1,1 @@
+ /usr/bin/python3.11 -m py_compile main.py
