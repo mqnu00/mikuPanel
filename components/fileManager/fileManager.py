@@ -1,10 +1,10 @@
 import json
 import os.path
 import pathlib
+import shutil
 
 
 class PathInfo:
-
     parent: str
     dirname: str
     dirtype: str
@@ -28,7 +28,6 @@ class PathInfo:
 
     def __str__(self):
         return json.dumps(self.__dict__)
-
 
 
 def is_path_exist(func):
@@ -98,6 +97,34 @@ def save_file(path, file_content):
     with open(p, 'w') as f:
         f.write(file_content)
 
+
+def mk_dir(path):
+    p = pathlib.Path(path)
+    p.mkdir()
+
+def del_path(path):
+    p = pathlib.Path(path)
+    if p.exists():
+        if p.is_dir():
+            shutil.rmtree(p)
+        elif p.is_file():
+            p.unlink()
+        return True
+    else:
+        return False
+
+def mv_path(source_path, target_path):
+    source_path = pathlib.Path(source_path)
+    target_path = pathlib.Path(target_path)
+    if not source_path.exists():
+        raise Exception(f"源文件 {source_path} 不存在")
+    if not target_path.exists():
+        mk_dir(target_path)
+    if source_path.is_file() and target_path.is_dir():
+        target_path = target_path / source_path.name
+        if target_path.exists():
+            target_path.unlink()
+    shutil.move(source_path, target_path)
 
 if __name__ == '__main__':
     print(get_file_list('/home/lzh/.zshrc'))

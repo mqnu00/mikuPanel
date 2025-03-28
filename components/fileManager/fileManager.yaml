@@ -1,0 +1,11 @@
+FileManager:
+  version: 1.0.0
+  type: module
+  menu:
+    label: 文件管理
+    key: go-to-file
+    path: /file
+  router:
+    path: /file
+    name: FileManager
+    component: /src/views/fileManager/FileManager.vue
