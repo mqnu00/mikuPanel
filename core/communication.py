@@ -91,7 +91,7 @@ share: dict = {}
 ctx: dict = {}
 process_pool: Pool = None
 thread_pool: ThreadPoolExecutor = None
-allow_router: bool = False
+allow_router: bool = True
 
 
 def pool_initializer():
@@ -116,7 +116,8 @@ def init_thread_pool(num: int = 10):
 def init_ipc(info: str = None):
     if info:
         global share
-        share[info] = Message()
+        if not share.get(info, None):
+            share[info] = Message()
     else:
         # 保证 manager 只有一个
         global manager
