@@ -1,7 +1,12 @@
 import asyncio
 import json
+import os
+import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from typing import List, Coroutine, Any
+
+import aiohttp_cors
 from aiohttp import web
 from aiohttp.web_ws import WebSocketResponse, WSMsgType
 
@@ -12,12 +17,22 @@ from utils.log_util import log
 from core.communication import share
 from core import communication
 from core.message.action.dispatch import action_dispatch
-
+from aiohttp_cors import setup as setup_cors
 
 class MikuServer(object):
     def __init__(self, port):
+
         self.port = port
         self.app = web.Application()
+        self.cors = aiohttp_cors.setup(self.app, defaults={
+            "*": aiohttp_cors.ResourceOptions(
+                allow_credentials=True,
+                expose_headers="*",
+                allow_headers="*",
+            )
+        })
+
+
         self.runner = None
 
     def start(self):
@@ -44,28 +59,46 @@ class MikuServer(object):
                     await asyncio.sleep(0)
                 async for msg in ws:
                     if msg.type == WSMsgType.TEXT:
-                        await asyncio.to_thread(communication.share[uid].recv_queue.put, msg.data)
+                        await communication.share[uid].write(msg.data, 1, is_sync=False)
+                        # await asyncio.to_thread(communication.share[uid].recv_queue.put, msg.data)
                     elif msg.type == WSMsgType.CLOSED:
+
                         await asyncio.to_thread(communication.share[uid].recv_queue.put, None)
+
                         break
-                log.info('websocket recv close')
+                log.info(f'{uid} recv closed')
+                await asyncio.to_thread(communication.share[uid].recv_queue.put, json.dumps({
+                    "do": "close"
+                }))
+                log.info(uid.split('-')[0])
+                if uid.split('-')[0] == "menu":
+                    log.info("menu")
+                    await asyncio.to_thread(communication.share["menu-component"].send_queue.put, {
+                        "do": "close"
+                    })
+                return 'recv_done'
 
             async def send_msg():
                 nonlocal check_status
                 while not check_status:
                     await asyncio.sleep(0)
                 while True:
-                    msg = await asyncio.to_thread(communication.share[uid].send_queue.get)
+                    msg = await communication.share[uid].read(1, is_sync=False)
+                    # msg = await asyncio.to_thread(communication.share[uid].send_queue.get)
                     if not msg:
                         break
                     await ws.send_str(msg)
-                log.info('websocket send close')
+                log.info(f'{uid} send closed')
 
             async def check_end():
                 log.info('server.handle')
                 msg = await ws.receive_str()
+                log.info(msg)
                 nonlocal uid
-                uid, future = await asyncio.to_thread(action_dispatch, msg)
+                # 创建一个自定义的线程池
+                executor = ThreadPoolExecutor(max_workers=1)
+                loop = asyncio.get_running_loop()
+                uid, future = await loop.run_in_executor(executor, action_dispatch, msg)
                 log.info("测试dispatch输出")
                 log.info(uid)
                 log.info(future)
@@ -79,34 +112,35 @@ class MikuServer(object):
 
             start_component_task = asyncio.create_task(check_end())
             tasks: List[asyncio.Task] = [asyncio.create_task(recv_msg()), asyncio.create_task(send_msg())]
-            await asyncio.gather(start_component_task, *tasks)
-
+            done, pending = await asyncio.wait([start_component_task, *tasks], return_when=asyncio.FIRST_COMPLETED)
+            # 检查哪个任务完成了
+            # for task in done:
+            #     result = task.result()
+            #     if result == "recv_done":
+            #         log.info("recv_msg completed, cancelling other tasks")
+            #         for pending_task in pending:
+            #             pending_task.cancel()
+            #             try:
+            #                 await pending_task
+            #             except asyncio.CancelledError:
+            #                 log.info(f"Task {pending_task} was cancelled")
             return ws
 
             # HTTP 路由
         async def handle_http(request: web.Request):
-            return web.Response(text="Hello, this is the HTTP server!", content_type="text/plain")
 
-        async def router_config(request: web.Request):
-            log.info('路由设置')
-            ws = web.WebSocketResponse()
-            await ws.prepare(request)
-
-            # 模拟路由配置数据
-            routes = [
-                {"path": "/about", "name": "About", "component": "/src/plugins/1AboutView.vue"},
-            ]
-
-            # 将路由配置数据发送到前端
-            await ws.send_json({"type": "routes", "routes": routes})
-
-            await ws.close()
-
-            return ws
+            if request.path == '/install_component':
+                # 处理文件上传
+                from core.message.action import component_config
+                return await component_config.save_plugin(request)
+            else:
+                return web.Response(text="Hello, this is the HTTP server!", content_type="text/plain")
 
         self.app.router.add_get('/', handle_ws)
-        self.app.router.add_get('/RouterConfig', router_config)
-        self.app.router.add_get('/http/{tail:.*}', handle_http)
+        # self.app.router.add_get('/{tail:.*}', handle_http)
+        # 配置 CORS 允许所有来源
+        self.app.router.add_get('/{tail:.*}', handle_http)
+        self.cors.add(self.app.router.add_post('/{tail:.*}', handle_http))
 
         runner = web.AppRunner(self.app)
         await runner.setup()
