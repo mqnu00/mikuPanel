@@ -5,6 +5,7 @@ from multiprocessing.pool import Pool
 from multiprocessing.managers import SyncManager
 from multiprocessing import Queue
 import asyncio
+import queue
 
 
 class Message(object):
@@ -61,7 +62,15 @@ class Message(object):
             else:
                 return not self.recv_queue.full()
 
-    def read(self, role, is_sync: bool = True):
+    def read(self, role, uid: str = None, is_sync: bool = True):
+        if uid:
+            if uid not in self.action_info:
+                raise Exception(f"wrong uid {uid}")
+            msg_queue: manager.Queue = self.action_info[uid]
+            if is_sync:
+                return self.read_queue_sync(msg_queue)
+            else:
+                return self.read_queue_async(msg_queue)
         if role == 0:
             if is_sync:
                 return self.read_queue_sync(self.recv_queue)
@@ -73,7 +82,15 @@ class Message(object):
             else:
                 return self.read_queue_async(self.send_queue)
 
-    def write(self, content, role, is_sync: bool = True):
+    def write(self, content, role, uid: str = None, is_sync: bool = True):
+        if uid:
+            if uid not in self.action_info:
+                self.action_info[uid] = manager.Queue()
+            msg_queue: manager.Queue = self.action_info[uid]
+            if not is_sync:
+                self.send_queue_async(msg_queue, content)
+            else:
+                self.send_queue_sync(msg_queue, content)
         if role == 0:
             if is_sync:
                 return self.send_queue_sync(self.send_queue, content)
@@ -134,6 +151,11 @@ if __name__ == '__main__':
     from components.terminal.terminal import SSHInfo
 
     init_ipc()
+    init_ipc('test')
+    msg: Message = share.get('test')
+    msg.write(content=123, role=1, uid='1122')
+    print(msg.read(role=0, uid='1122'))
+    print(msg.read(role=0, uid='1122'))
     # init_sql(4)
     #
     #
