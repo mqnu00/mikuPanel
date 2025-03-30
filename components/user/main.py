@@ -5,16 +5,13 @@ import time
 from components.base_component import BaseComponent
 from core import communication
 from core.communication import Message
-from core.component_init import Config
 
 
 class UserComponent(BaseComponent):
 
-    def __init__(self):
-        self.config = Config(
-            is_need_sql=True,
-            sql_table=['userinfo']
-        )
+    def __init__(self, uid):
+
+        super().__init__(uid)
 
     def handle(self, share_uid):
         """

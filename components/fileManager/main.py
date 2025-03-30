@@ -3,7 +3,6 @@ import json
 
 from components.base_component import BaseComponent
 from core.communication import Message
-from core.component_init import Config
 from components.fileManager import fileManager
 from core.LoopManager import loop_manager
 from core import communication
@@ -11,8 +10,8 @@ from core import communication
 
 class FileManagerComponent(BaseComponent):
 
-    def __init__(self):
-        self.config = Config()
+    def __init__(self, uid):
+        super().__init__(uid)
 
     def handle(self, share_id):
 

@@ -9,7 +9,6 @@ from websockets.asyncio.server import ServerConnection
 
 from components.base_component import BaseComponent
 from components.terminal.terminal import Terminal, SSHInfo
-from core.component_init import Config
 from utils.log_util import log
 from core import communication
 import uuid
@@ -17,11 +16,8 @@ import uuid
 
 class TerminalComponent(BaseComponent):
 
-    def __init__(self):
-        self.config = Config(
-            is_need_sql=True,
-            sql_table=['components.terminal.terminal.SSHInfo']
-        )
+    def __init__(self, uid):
+        super().__init__(uid)
         self.terminals: Dict[str, Terminal] = {}
 
     def create_terminal(self, info, *args, **kwargs):
