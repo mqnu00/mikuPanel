@@ -1,14 +1,13 @@
-dockerManager:
+ComponentConfig:
   version: 1.0.0
-  type: module
-  frontend: /src/views/dockerManager/DockerManager.vue
-  backend: components.dockerManager.main
-  path: /docker
+  type: 核心依赖
+  uid: component-config
+  operation: false
   menu:
-    label: 容器管理
-    key: go-to-docker
-    path: /docker
+    label: 插件装载
+    key: go-to-component
+    path: /component
   router:
-    name: DockerManager
-    path: /docker
-    component: /src/views/dockerManager/DockerManager.vue
+    path: /component
+    name: Component
+    component: /src/views/componentConfig/ComponentConfig.vue

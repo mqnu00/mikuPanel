@@ -146,7 +146,7 @@ def execute(share_uid: str):
                 await uninstall_component(msg["component"])
             elif do_info == 'close':
                 from utils.log_util import log
-                log.info("component config clos")
+                log.info("component config close")
                 await send_component_config(None)
                 return
 
