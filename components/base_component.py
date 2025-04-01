@@ -1,4 +1,4 @@
-from websockets.asyncio.server import ServerConnection
+import json
 
 from core import communication
 from core.communication import Message
@@ -8,7 +8,7 @@ class BaseComponent():
 
     def __init__(self, uid):
         self.uid = uid
-        self.role = 1
+        self.role = 0
         self.msg: Message = communication.share.get(uid)
 
     def handle(self, uid):
