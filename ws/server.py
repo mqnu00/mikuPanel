@@ -1,6 +1,8 @@
 import asyncio
 import json
 import os
+import pprint
+import sys
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -98,7 +100,12 @@ class MikuServer(object):
                 # 创建一个自定义的线程池
                 executor = ThreadPoolExecutor(max_workers=1)
                 loop = asyncio.get_running_loop()
-                uid, future = await loop.run_in_executor(executor, action_dispatch, msg)
+                result = await loop.run_in_executor(executor, action_dispatch, msg)
+                component_name = None
+                if len(result) == 2:
+                    uid, future = result
+                else:
+                    uid, component_name, future = result
                 log.info("测试dispatch输出")
                 log.info(uid)
                 log.info(future)
@@ -109,6 +116,16 @@ class MikuServer(object):
                 if res:
                     await ws.close()
                 del communication.share[uid]
+                if component_name:
+                    try:
+                        modules_to_delete = [name for name in sys.modules if name.startswith(component_name)]
+
+                        for module_name in modules_to_delete:
+                            if module_name in sys.modules:
+                                del sys.modules[module_name]
+                                log.info(f"已删除模块: {module_name}")
+                    except Exception as e:
+                        log.exception(e)
 
             start_component_task = asyncio.create_task(check_end())
             tasks: List[asyncio.Task] = [asyncio.create_task(recv_msg()), asyncio.create_task(send_msg())]

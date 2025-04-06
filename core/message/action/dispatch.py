@@ -19,7 +19,7 @@ def run(component_name):
     executor = ThreadPoolExecutor(max_workers=1)
     future = executor.submit(module.execute, component_name, uid)
 
-    return uid, future
+    return uid, f"components.{component_name}", future
 
 
 def action_dispatch(msg: str):

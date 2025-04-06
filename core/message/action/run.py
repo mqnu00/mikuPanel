@@ -8,8 +8,6 @@ from utils.log_util import log
 from core import communication
 from core.communication import Message
 
-from websockets.server import ServerConnection
-
 
 def execute(component_name: str, share_uid: str):
     try:
