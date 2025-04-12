@@ -7,6 +7,7 @@ import traceback
 
 import aiohttp
 import aiodocker
+from aiodocker import DockerError
 
 from utils.log_util import log
 
@@ -127,6 +128,385 @@ class DockerManager:
 
         return res
 
+    async def create_container(self, config):
+        """
+        创建 Docker 容器
+
+        :param config: 容器配置字典
+        :return: dict {
+            "result": bool,
+            "msg": str,
+            "data": dict  # 容器详细信息
+        }
+        """
+        res = {
+            "result": False,
+            "msg": "初始化",
+            "data": {}
+        }
+
+        try:
+
+            log.info(f"name: {config['name']}")
+            # 创建容器
+            container = await self.docker.containers.create(
+                name=config["name"],
+                config={
+                    "HostConfig": config.get("host_config", {}),
+                    "Image": config["image"],
+                    "Env": config.get("env", []),
+                    "ExposedPorts": config.get("exposed_ports", {}),
+                    "Volumes": config.get("volumes", {}),
+                    "Hostname": config.get("hostname", ""),
+                    "RestartPolicy": config.get("restart_policy", {}),
+                    "NetworkingConfig": {
+                        "EndpointsConfig": {
+                            config["host_config"]["network_mode"]: {
+                                "IPAMConfig": {
+                                    "IPv4Address": config.get("ip_address", "")
+                                }
+                            }
+                        }
+                    }
+                },
+                # detach=True  # 以分离模式运行容器
+            )
+
+            # 获取容器的详细信息
+            container_details = await container.show()
+
+            formatted = {
+                "id": container_details["Id"],
+                "name": container_details["Name"].lstrip("/"),  # 去掉名称前的斜杠
+                "image": container_details["Config"]["Image"],
+                "created": container_details["Created"],
+                "status": container_details["State"]["Status"],
+                "hostname": container_details["Config"]["Hostname"],
+                "ports": container_details["NetworkSettings"]["Ports"],
+                "ip_address": container_details["NetworkSettings"]["IPAddress"],
+                "environment": container_details["Config"]["Env"],
+                "volumes": container_details["Mounts"]
+            }
+
+            res.update({
+                "result": True,
+                "msg": f"容器创建成功，ID: {container_details['Id']}",
+                "data": formatted
+            })
+
+        except DockerError as e:
+            error_msg = f"Docker操作失败: {str(e)}"
+            res.update({
+                "msg": error_msg,
+                "data": {}
+            })
+        except KeyError as e:
+            error_msg = f"数据解析错误，缺少字段: {str(e)}"
+            res.update({
+                "msg": error_msg,
+                "data": {}
+            })
+        except Exception as e:
+            error_msg = f"发生未预期错误: {str(e)}"
+            res.update({
+                "msg": error_msg,
+                "data": {}
+            })
+
+        return res
+
+    async def start_container(self, container_id: str) -> dict:
+        """
+        运行指定的Docker容器
+
+        :param container_id: 容器ID或名称
+        :return: dict {
+            "result": bool,
+            "msg": str,
+            "data": dict  # 容器详细信息
+        }
+        """
+        res = {
+            "result": False,
+            "msg": "初始化",
+            "data": {}
+        }
+
+        try:
+            # 获取容器对象
+            container = await self.docker.containers.get(container_id)
+
+            # 启动容器
+            await container.start()
+
+            # 获取更新后的容器状态
+            container_details = await container.show()
+
+            # 格式化返回数据（与create_container保持一致）
+            formatted = {
+                "id": container_details["Id"],
+                "name": container_details["Name"].lstrip("/"),
+                "image": container_details["Config"]["Image"],
+                "created": container_details["Created"],
+                "status": container_details["State"]["Status"],
+                "hostname": container_details["Config"]["Hostname"],
+                "ports": container_details["NetworkSettings"]["Ports"],
+                "ip_address": container_details["NetworkSettings"]["IPAddress"],
+                "environment": container_details["Config"]["Env"],
+                "volumes": container_details["Mounts"]
+            }
+
+            res.update({
+                "result": True,
+                "msg": f"容器 {container_details['Name'].lstrip('/')} 启动成功",
+                "data": formatted
+            })
+            log.info(f"容器启动成功: {container_id}")
+
+        except aiodocker.exceptions.DockerError as e:
+            error_status = getattr(e, "status", 500)
+
+            if error_status == 404:
+                error_msg = f"容器 {container_id} 不存在"
+            elif error_status == 304:
+                error_msg = f"容器 {container_id} 已经处于运行状态"
+            elif error_status == 500:
+                error_msg = f"容器启动失败: {str(e)}"
+            else:
+                error_msg = f"Docker操作失败: {str(e)}"
+
+            res.update({
+                "msg": error_msg,
+                "data": {"docker_status": error_status}
+            })
+            log.warning(f"启动容器错误: {error_msg}")
+
+        except Exception as e:
+            error_msg = f"发生未预期错误: {str(e)}"
+            res.update({
+                "msg": error_msg,
+                "data": {}
+            })
+            log.exception("启动容器异常")
+
+        return res
+
+    async def stop_container(self, container_id: str, timeout: int = 10) -> dict:
+        """
+        停止运行指定的Docker容器
+
+        :param container_id: 容器ID或名称
+        :param timeout: 等待容器停止的超时时间（秒）
+        :return: dict {
+            "result": bool,
+            "msg": str,
+            "data": dict  # 容器详细信息
+        }
+        """
+        res = {
+            "result": False,
+            "msg": "初始化",
+            "data": {}
+        }
+
+        try:
+            # 获取容器对象
+            container = await self.docker.containers.get(container_id)
+            current_state = await container.show()
+
+            # 检查当前状态
+            if current_state["State"]["Status"] not in ["running", "restarting"]:
+                raise RuntimeError(f"容器当前状态为 {current_state['State']['Status']}，无法停止")
+
+            # 停止容器
+            await container.stop(timeout=timeout)
+
+            # 获取更新后的容器状态
+            container_details = await container.show()
+
+            # 格式化返回数据（与create_container/start_container保持一致）
+            formatted = {
+                "id": container_details["Id"],
+                "name": container_details["Name"].lstrip("/"),
+                "image": container_details["Config"]["Image"],
+                "created": container_details["Created"],
+                "status": container_details["State"]["Status"],
+                "hostname": container_details["Config"]["Hostname"],
+                "ports": container_details["NetworkSettings"]["Ports"],
+                "ip_address": container_details["NetworkSettings"]["IPAddress"],
+                "environment": container_details["Config"]["Env"],
+                "volumes": container_details["Mounts"],
+                "exit_code": container_details["State"].get("ExitCode", -1)
+            }
+
+            res.update({
+                "result": True,
+                "msg": f"容器 {container_details['Name'].lstrip('/')} 已停止",
+                "data": formatted
+            })
+            log.info(f"容器停止成功: {container_id}")
+
+        except aiodocker.exceptions.DockerError as e:
+            error_status = getattr(e, "status", 500)
+
+            if error_status == 404:
+                error_msg = f"容器 {container_id} 不存在"
+            elif error_status == 304:
+                error_msg = f"容器 {container_id} 已经处于停止状态"
+            elif error_status == 500:
+                error_msg = f"容器停止失败: {str(e)}"
+            else:
+                error_msg = f"Docker操作失败: {str(e)}"
+
+            res.update({
+                "msg": error_msg,
+                "data": {"docker_status": error_status}
+            })
+            log.warning(f"停止容器错误: {error_msg}")
+
+        except RuntimeError as e:
+            res.update({
+                "msg": str(e),
+                "data": {"current_state": current_state["State"]["Status"]}
+            })
+            log.warning(f"容器状态不允许停止: {str(e)}")
+
+        except Exception as e:
+            error_msg = f"发生未预期错误: {str(e)}"
+            res.update({
+                "msg": error_msg,
+                "data": {}
+            })
+            log.exception("停止容器异常")
+
+        return res
+
+    async def get_container_logs(
+            self,
+            container_id: str,
+            tail: int = 100,
+            since: str = None,
+            until: str = None,
+            follow: bool = False,
+            timestamps: bool = False,
+            stream: bool = False
+    ) -> dict:
+        """
+        获取Docker容器日志
+
+        :param container_id: 容器ID或名称
+        :param tail: 返回最后多少行日志（默认100）
+        :param since: 返回此时间戳之后的日志（RFC3339格式）
+        :param until: 返回此时间戳之前的日志（RFC3339格式）
+        :param follow: 是否持续输出新日志（类似tail -f）
+        :param timestamps: 是否包含时间戳
+        :param stream: 是否以流式方式返回（适合大日志）
+        :return: dict {
+            "result": bool,
+            "msg": str,
+            "data": {
+                "logs": str/list,  # 字符串或行列表
+                "container_id": str,
+                "warnings": list
+            }
+        }
+        """
+        res = {
+            "result": False,
+            "msg": "",
+            "data": {
+                "logs": "",
+                "container_id": container_id,
+                "warnings": []
+            }
+        }
+
+        try:
+            # 获取容器对象
+            container = await self.docker.containers.get(container_id)
+            container_info = await container.show()
+
+            # 检查容器状态
+            if container_info["State"]["Status"] not in ["running", "exited"]:
+                raise RuntimeError(f"容器状态 {container_info['State']['Status']} 不支持日志查询")
+
+            # 构建日志参数
+            log_params = {
+                "stdout": True,
+                "stderr": True,
+                "tail": str(tail),
+                "timestamps": timestamps,
+                "follow": follow
+            }
+            if since:
+                log_params["since"] = since
+            if until:
+                log_params["until"] = until
+
+            # 获取日志
+            if stream:
+                # 流式日志处理
+                logs_stream = container.log(**log_params)
+                res["data"]["logs"] = []  # 改为列表形式
+
+                async for log_chunk in logs_stream:
+                    if isinstance(log_chunk, bytes):
+                        log_chunk = log_chunk.decode("utf-8", errors="replace")
+                    res["data"]["logs"].append(log_chunk.strip())
+
+                res["result"] = True
+                res["msg"] = f"成功获取容器 {container_id} 的流式日志"
+            else:
+                # 普通日志获取
+                logs = await container.log(**log_params)
+                decoded_logs = []
+
+                for log_entry in logs:
+                    if isinstance(log_entry, bytes):
+                        log_entry = log_entry.decode("utf-8", errors="replace")
+                    decoded_logs.append(log_entry.strip())
+
+                res["data"]["logs"] = "\n".join(decoded_logs) if not timestamps else decoded_logs
+                res["result"] = True
+                res["msg"] = f"成功获取容器 {container_id} 的日志（共 {len(decoded_logs)} 行）"
+
+            # 捕获可能的警告信息
+            if hasattr(container, "attrs") and "Warnings" in container.attrs:
+                res["data"]["warnings"] = container.attrs["Warnings"]
+
+        except aiodocker.exceptions.DockerError as e:
+            error_status = getattr(e, "status", 500)
+
+            if error_status == 404:
+                error_msg = f"容器 {container_id} 不存在"
+            elif error_status == 406:
+                error_msg = f"容器 {container_id} 未运行，无法获取日志"
+            else:
+                error_msg = f"Docker操作失败: {str(e)}"
+
+            res.update({
+                "msg": error_msg,
+                "data": {"docker_status": error_status}
+            })
+            log.warning(f"获取日志错误: {error_msg}")
+
+        except RuntimeError as e:
+            res.update({
+                "msg": str(e),
+                "data": {"current_state": container_info["State"]["Status"]}
+            })
+            log.warning(f"容器状态不支持日志查询: {str(e)}")
+
+        except Exception as e:
+            error_msg = f"获取日志时发生未知错误: {str(e)}"
+            res.update({
+                "msg": error_msg,
+                "data": {}
+            })
+            log.exception("获取日志异常")
+
+        return res
+
     async def create_network(self, network_config: dict) -> dict:
         """
         创建Docker网络（适配前端表单数据结构）
@@ -223,6 +603,101 @@ class DockerManager:
         except Exception as e:
             response["msg"] = f"创建网络时发生未知错误: {str(e)}"
             log.exception("创建网络异常")
+
+        return response
+
+    async def delete_network(self, network_identifier: str, force: bool = False) -> dict:
+        """
+        删除Docker网络
+
+        :param network_identifier: 网络名称或ID
+        :param force: 是否强制删除（删除正在使用的网络）
+        :return: {
+            "result": bool,
+            "msg": str,
+            "data": {
+                "id": str,         # 被删除的网络ID
+                "name": str,       # 被删除的网络名称
+                "warnings": list   # 删除过程中的警告信息
+            }
+        }
+        """
+        response = {
+            "result": False,
+            "msg": "",
+            "data": {
+                "id": "",
+                "name": "",
+                "warnings": []
+            }
+        }
+
+        try:
+            # 参数校验
+            if not network_identifier:
+                raise ValueError("网络标识不能为空")
+
+            # 获取网络对象
+            network = await self.docker.networks.get(network_identifier)
+            network_info = await network.show()
+
+            # 检查网络是否正在被使用
+            if not force and network_info.get("Containers"):
+                containers = list(network_info["Containers"].keys())
+                raise RuntimeError(
+                    f"网络 {network_info['Name']} 正在被 {len(containers)} 个容器使用。"
+                    "请先移除容器或使用强制删除。"
+                )
+
+            # 执行删除操作
+            await network.delete()
+
+            # 构建成功响应
+            response.update({
+                "result": True,
+                "msg": f"网络 {network_info['Name']} 删除成功",
+                "data": {
+                    "id": network.id,
+                    "name": network_info["Name"],
+                    "warnings": network_info.get("Warning", [])
+                }
+            })
+            log.info(f"成功删除网络: {network_info['Name']}({network.id})")
+
+        except aiodocker.exceptions.DockerError as e:
+            error_status = getattr(e, "status", 500)
+            error_msg = f"删除网络失败: {str(e)}"
+
+            if error_status == 404:
+                error_msg = f"网络 {network_identifier} 不存在"
+            elif error_status == 403:
+                error_msg = "没有权限删除该网络"
+            elif error_status == 409:
+                error_msg = "网络正在被使用，拒绝删除"
+
+            response.update({
+                "msg": error_msg,
+                "data": {"docker_status": error_status}
+            })
+            log.warning(f"删除网络错误: {error_msg}")
+
+        except ValueError as e:
+            response["msg"] = f"参数错误: {str(e)}"
+            log.warning(f"参数校验失败: {str(e)}")
+
+        except RuntimeError as e:
+            response.update({
+                "msg": str(e),
+                "data": {
+                    "requires_force": True,
+                    "container_count": len(network_info.get("Containers", {}))
+                }
+            })
+            log.warning(f"网络正在使用: {str(e)}")
+
+        except Exception as e:
+            response["msg"] = f"删除网络时发生未知错误: {str(e)}"
+            log.exception("删除网络异常")
 
         return response
 

@@ -1,0 +1,11 @@
+logReader:
+  version: 1.0.0
+  type: module
+  menu:
+    label: 日志查询
+    key: go-to-log
+    path: /log
+  router:
+    path: /log
+    name: LogReader
+    component: /src/views/logReader/LogReader.vue

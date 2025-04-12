@@ -23,3 +23,4 @@ env_vars = os.environ
 
 FRONTEND_PATH = env_vars.get("FRONTEND_PATH")
 BACKEND_PATH = env_vars.get("BACKEND_PATH")
+LOG_PATH = env_vars.get("LOG_PATH")

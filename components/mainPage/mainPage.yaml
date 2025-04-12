@@ -1,0 +1,11 @@
+MainPage:
+  version: 1.0.0
+  type: front
+  menu:
+    label: 主页
+    key: go-to-main
+    path: /
+  router:
+    path: /
+    name: MainPage
+    component: /src/views/mainPage/MainPage.vue

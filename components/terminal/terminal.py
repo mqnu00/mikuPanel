@@ -1,36 +1,8 @@
-import json
-
-from sqlalchemy import Integer, Column, DateTime, String, select
-
 from utils.log_util import log
 import paramiko
-from core import communication
-# from core.sqlEngine import
+from components.terminal.terminalSql import SSHInfo
 
 
-class SSHInfo(object):
-
-    def __init__(self, host: str, username: str, password: str, port: int = 22):
-        self.host = host
-        self.port = port
-        self.username = username
-        self.password = password
-
-
-# class SSHInfo(sqlEngine.sql_engine.SqlBase):
-#
-#     __tablename__ = 'SSHInfo'
-#     id = Column(Integer, primary_key=True)
-#     date_joined = Column(DateTime)
-#     host = Column(String(length=30))
-#     port = Column(Integer)
-#     username = Column(String(length=30))
-#     password = Column(String(length=128))
-#
-#     def select_all(self):
-#         query = select(self.__class__)
-#         res = communication.sql_engine.execute(query)
-#         return res
 
 
 class Terminal(object):

@@ -8,8 +8,9 @@ from core import communication
 from utils.log_util import log
 
 
-def run(component_name):
-    uid = f'{component_name}-{str(uuid.uuid1())}'
+def run(component_name, uid=None):
+    if not uid:
+        uid = f'{component_name}-{str(uuid.uuid1())}'
     log.info(uid)
     communication.init_ipc(uid)
 
@@ -27,12 +28,7 @@ def action_dispatch(msg: str):
 
     resolve_msg: dict = json.loads(msg)
     if resolve_msg["type"] == "run":
-        # 判断是否需要权限验证
-        if not communication.allow_router:
-            component_name = 'user'
-            return run(component_name)
-        else:
-            return run(resolve_msg["component"])
+        return run(resolve_msg["component"])
     elif resolve_msg["type"] == "menu":
         uid = f'menu-{str(uuid.uuid1())}'
         log.info(uid)

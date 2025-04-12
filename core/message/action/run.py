@@ -1,6 +1,7 @@
 import asyncio
 import importlib
 import multiprocessing
+import sys
 import threading
 
 from components.base_component import BaseComponent
@@ -25,4 +26,14 @@ def execute(component_name: str, share_uid: str):
         component_instance.handle(share_uid)
     except Exception:
         log.exception("run wrong")
+    finally:
+        try:
+            modules_to_delete = [name for name in sys.modules if name.startswith(component_name)]
+
+            for module_name in modules_to_delete:
+                if module_name in sys.modules:
+                    del sys.modules[module_name]
+                    log.info(f"已删除模块: {module_name}")
+        except Exception as e:
+            log.exception(e)
     return True

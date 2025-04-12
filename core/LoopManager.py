@@ -181,13 +181,26 @@ class LoopManager(object):
 loop_manager = LoopManager()
 
 if __name__ == '__main__':
-    loop = loop_manager.get_or_add_loop_threadsafe('test')
+    import asyncio
 
 
-    async def testt():
-        log.info('123')
-        tloop = asyncio.get_running_loop()
-        tloop.stop()
+    # 定义一个异步任务
+    async def task():
+        print("Task started")
+        await asyncio.sleep(2)  # 模拟异步操作
+        print("Task completed")
 
 
-    loop.run(testt())
+    # 主函数
+    async def main():
+        # 提交任务到当前正在运行的事件循环
+        asyncio.create_task(task())  # 任务会被立即添加，不会阻塞主线程
+
+        # 主线程继续执行其他操作，无需等待任务完成
+        print("Main thread is doing other work")
+        await asyncio.sleep(1)  # 模拟主线程的其他工作
+        print("Main thread finished")
+
+
+    # 运行主函数
+    asyncio.run(main())

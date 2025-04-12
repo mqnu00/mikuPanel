@@ -72,9 +72,7 @@ class MikuServer(object):
                 await asyncio.to_thread(communication.share[uid].recv_queue.put, json.dumps({
                     "do": "close"
                 }))
-                log.info(uid.split('-')[0])
                 if uid.split('-')[0] == "menu":
-                    log.info("menu")
                     await asyncio.to_thread(communication.share["menu-component"].send_queue.put, {
                         "do": "close"
                     })
@@ -93,9 +91,7 @@ class MikuServer(object):
                 log.info(f'{uid} send closed')
 
             async def check_end():
-                log.info('server.handle')
                 msg = await ws.receive_str()
-                log.info(msg)
                 nonlocal uid
                 # 创建一个自定义的线程池
                 executor = ThreadPoolExecutor(max_workers=1)
@@ -106,9 +102,6 @@ class MikuServer(object):
                     uid, future = result
                 else:
                     uid, component_name, future = result
-                log.info("测试dispatch输出")
-                log.info(uid)
-                log.info(future)
                 nonlocal check_status
                 check_status = True
                 res = await asyncio.to_thread(future.result)

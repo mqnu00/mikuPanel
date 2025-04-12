@@ -1,30 +1,16 @@
 import asyncio
 import importlib
-import json
-import logging
 import multiprocessing
-import sys
-import time
 import uuid
-from multiprocessing.pool import Pool
-from typing import List
 
-from rx.subject import Subject
-from sqlalchemy.exc import InvalidRequestError, SQLAlchemyError
-from sqlalchemy.ext.asyncio import create_async_engine
-from transitions import EventData
-
-from core.service import Service
-from utils.log_util import setup_logger
-from sqlalchemy import create_engine, Engine, Executable, text, insert, Column, Integer, String, Row, inspect
-from sqlalchemy.orm import Query, declarative_base, DeclarativeBase, sessionmaker
-from multiprocessing.managers import SyncManager
-import pymysql
-import aiomysql
+from sqlalchemy import create_engine, Executable, Row, inspect
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.orm import declarative_base, DeclarativeBase, sessionmaker
 
 from core import communication
 from core.communication import Message
+from utils.log_util import setup_logger
 
 
 # todo 修改为组件
@@ -45,7 +31,7 @@ class SqlEngine(object):
                          sql_type: str = 'mysql',
                          sql_package: str = 'pymysql',
                          dbname: str = 'mikuserver',
-                         host: str = 'localhost',
+                         host: str = '172.17.0.2',
                          charset: str = 'utf8',
                          thread_num: int = 4):
 
@@ -187,38 +173,6 @@ def read_task_from_pipe():
     msg = communication.share.read(communication.share['sql'])
 
 
-# class SqlService(Service):
-#
-#     def __init__(self, loop):
-#         super().__init__(loop)
-#         self.messages: dict[str, Message] = {}
-#         self.is_config = False
-#         self.config_obs = Subject()
-#         self.config_obs.subscribe(lambda uid: self.config(uid=uid))
-#
-#     def _config(self, event: EventData):
-#         # 浅拷贝
-#         # self.messages: dict[str, Message] = communication.share['sql']
-#         # for k in self.messages:
-#         #     self.messages[k].set_role(1)
-#         self.pending()
-#
-#     def _pending(self, event):
-#         for uid, msg in communication.share['sql'].items():
-#             msg: Message
-#             msg.set_role(1)
-#             if msg.is_ready(check='recv'):
-#                 result = self.working(msg=msg.read(is_sync=False))
-#                 msg.write(result)
-#
-#     def _working(self, event):
-#         msg = event.kwargs.get('msg')
-#         msg = json.loads(msg)
-#         return connect_sql_async(
-#             **msg
-#         )
-
-
 # todo sql_service
 # todo 状态机管理
 class SqlService(object):
@@ -283,7 +237,7 @@ class SqlService(object):
         sql_loop.loop.create_task(self.handle())
 
 
-from core.LoopManager import Loop, loop_manager
+from core.LoopManager import loop_manager
 
 sql_loop = loop_manager.get_or_add_loop_threadsafe('sql_engine')
 sql_service = SqlService()

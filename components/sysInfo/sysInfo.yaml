@@ -1,0 +1,11 @@
+SysInfo:
+  version: 1.0.0
+  type: module
+  menu:
+    label: 系统监控
+    key: go-to-sysInfo
+    path: /sysInfo
+  router:
+    path: /sysInfo
+    name: SysInfo
+    component: /src/views/sysInfo/SysInfo.vue

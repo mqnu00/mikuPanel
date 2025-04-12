@@ -5,19 +5,22 @@ import threading
 import traceback
 from typing import Dict
 
-from websockets.asyncio.server import ServerConnection
-
+import components.databaseManager.databaseManager
 from components.base_component import BaseComponent
 from components.terminal.terminal import Terminal, SSHInfo
+from core.communication import Message
 from utils.log_util import log
 from core import communication
 import uuid
+from components.terminal import terminalSql
 
 
 class TerminalComponent(BaseComponent):
 
     def __init__(self, uid):
         super().__init__(uid)
+        self.sql_msg: Message = communication.share.get(communication.ctx["databaseManager"]["msgId"])
+        self.sql_role = 1
         self.terminals: Dict[str, Terminal] = {}
 
     def create_terminal(self, info, *args, **kwargs):
@@ -87,7 +90,27 @@ class TerminalComponent(BaseComponent):
         from components.terminal.terminal import SSHInfo, Terminal
         # from tests import server_password
 
+        self.sql_msg.init_action(self.uid)
+
+        def get_ssh_info():
+            self.sql_msg.write(content={
+                "do": "runSql",
+                "package": "components.terminal.terminalSql",
+                "table": "SSHInfo",
+                "method": "select_all",
+                "uid": self.uid
+            }, role=self.sql_role)
+
+            return self.sql_msg.read(uid=self.uid)
+
         def receive():
+
+            sql_engine: components.databaseManager.databaseManager.DatabaseManager = communication.ctx.get('databaseManager').get('instance')
+
+            log.info(sql_engine)
+            log.info(communication.ctx.get('databaseManager'))
+            log.info(type(communication.ctx))
+            log.info(type(communication.ctx["databaseManager"]))
 
             while True:
                 if not communication.share[share_uid].recv_queue.empty():
@@ -113,9 +136,11 @@ class TerminalComponent(BaseComponent):
                         #         "password": ""
                         #     }
                         # }
-
+                        log.info(msg)
+                        result = terminalSql.SSHInfo.select_by_id(sql_engine.get_session(), info["data"]["sshInfoId"])
+                        log.info(result)
                         uid = self.create_terminal(SSHInfo(
-                            **info.get('data')
+                            **result
                         ))
                         # uid = self.create_terminal(SSHInfo(
                         #     host=server_password.host,
@@ -158,6 +183,30 @@ class TerminalComponent(BaseComponent):
                         uid = data.get('uid')
                         self.del_terminal(uid)
 
+                    elif do_info == 'getSSHInfo':
+                        log.info("get ssh info")
+                        self.write(json.dumps({
+                            "do_return": "getSSHInfo",
+                            "data": {
+                                "SSHInfoList": [
+                                    {
+                                        "id": info['id'],
+                                        "host": info['host']
+                                    }
+                                    for info in terminalSql.SSHInfo.select_all(sql_engine.get_session())
+                                ]
+                            }
+                        }))
+                    elif do_info == 'getSSHById':
+                        log.info(msg)
+                        self.write(json.dumps({
+                            "do_return": "getSSHById",
+                            "data": {
+                                terminalSql.SSHInfo.select_by_id(sql_engine.get_session(), msg["id"])
+                            }
+                        }))
+
+
             log.info("recv done")
 
         def send_to(gen, uid):
@@ -187,6 +236,4 @@ class TerminalComponent(BaseComponent):
             }))
             log.info('send done')
 
-        thread = threading.Thread(target=receive)
-        thread.start()
-        thread.join()
+        receive()

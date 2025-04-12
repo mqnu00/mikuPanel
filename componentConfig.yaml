@@ -11,3 +11,4 @@ ComponentConfig:
     path: /component
     name: Component
     component: /src/views/componentConfig/ComponentConfig.vue
+  isNeedVerify: true

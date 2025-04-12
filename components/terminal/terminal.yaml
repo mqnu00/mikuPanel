@@ -1,0 +1,17 @@
+terminal:
+  version: 1.0.0
+  type: module
+  menu:
+    label: 终端
+    key: go-to-terminal
+    path: /terminal
+  router:
+    path: /terminal
+    name: Terminal
+    component: /src/views/terminal/TerminalView.vue
+  require:
+    databaseManager:
+      tables:
+          - SSHInfo
+      package:
+        components.terminal.terminalSql

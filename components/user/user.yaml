@@ -1,0 +1,12 @@
+user:
+  version: 1.0.0
+  type: module
+  menu:
+    label: 用户
+    key: go-to-user
+    path: /user
+  router:
+    path: /user
+    name: User
+    component: /src/views/user/User.vue
+  VerifyControl: true

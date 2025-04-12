@@ -9,6 +9,7 @@ import yaml
 
 from core import communication
 from core.communication import Message
+from core.message.action import dispatch
 from utils.log_util import log
 import env_loader
 
@@ -16,15 +17,24 @@ menu_msg: Message = None
 menu_role = 0
 component_config_file = pathlib.Path(env_loader.BACKEND_PATH) / "componentConfig.yaml"
 
+first_load = True
 
 def init_component():
-    communication.ctx.clear()
+    global first_load
+    component_name_list = [component_name for component_name in communication.ctx.keys()]
+    for component_name in component_name_list:
+        if communication.ctx[component_name].get("msgId"):
+            continue
+        else:
+            del communication.ctx[component_name]
     # 加载基础组件
     with open(component_config_file, 'r') as f:
         import yaml
         data: dict = yaml.safe_load(f)
     if data:
         for k, v in data.items():
+            if data[k].get("msgId", None) and not first_load:
+                continue
             communication.ctx[k] = v
     # 加载开发组件
     component_dev_path = pathlib.Path(env_loader.BACKEND_PATH) / "components"
@@ -42,7 +52,25 @@ def init_component():
             data: dict = yaml.safe_load(f)
             print(data)
         for k, v in data.items():
+            if data[k].get("msgId", None) and not first_load:
+                continue
             communication.ctx[k] = v
+    first_load = False
+
+
+def config_resolve():
+    log.info("config_resolve")
+    for component_name, config in communication.ctx.items():
+
+        if config.get("require", None):
+            log.info(config.get("require"))
+            for require_component_name, require_config in config.get("require", None).items():
+                log.info(communication.ctx[require_component_name].get("msgId"))
+                require_msg: Message = communication.share.get(communication.ctx[require_component_name].get("msgId"))
+                require_msg.write({
+                    "do": "config",
+                    "data": require_config
+                }, role=1)
 
 
 def set_component(component_name, config):
@@ -59,11 +87,28 @@ def set_component(component_name, config):
         yaml.dump(base_content, f, sort_keys=False, allow_unicode=True)
 
 
-def refresh_menu():
-    res = [{
-        "name": cp_name,
-        **cp
-    } for cp_name, cp in communication.ctx.items()]
+def refresh_menu(verify_token = None):
+    #verify check
+    res = []
+    verify_result = True
+    for cp_name, cp in communication.ctx.items():
+        if cp.get("VerifyControl", None):
+            if cp.get("VerifyTokens", None):
+                if verify_token in cp.get("VerifyTokens"):
+                    verify_result = True
+                else:
+                    verify_result = False
+            else:
+                verify_result = False
+    log.info(verify_result)
+    for cp_name, cp in communication.ctx.items():
+        log.info(cp.get('isNeedVerify', False))
+        if not verify_result and cp.get('isNeedVerify', False):
+            continue
+        res.append({
+            "name": cp_name,
+            **{k: v for k, v in cp.items() if k != "instance"}
+        })
     menu_msg.write(json.dumps(res), menu_role)
 
 
@@ -100,21 +145,8 @@ def execute(share_uid: str):
 
     init_component()
 
-    communication.ctx.setdefault("component", {
-        "menu": {
-            "label": "插件装载",
-            "key": "go-to-component",
-            "path": "/component",
-        },
-        "router": {
-            "path": "/component",
-            "name": "Component",
-            "component": "/src/views/componentConfig/ComponentConfig.vue"
-        }
-    })
-
     refresh_menu()
-
+    config_resolve()
     log.info('base menu')
 
     async def recv():
@@ -164,17 +196,15 @@ def execute(share_uid: str):
 
 if __name__ == '__main__':
     # init_component()
-    set_component("file", {
+    set_component("123", {
         "menu": {
-
-            "label": "文件管理",
-            "key": "go-to-file",
-            "path": "/file",
-
+            "label": "插件装载",
+            "key": "go-to-component",
+            "path": "/component",
         },
         "router": {
-            "path": "/file",
-            "name": "FileManager",
-            "component": "/src/views/fileManager/FileManager.vue"
+            "path": "/component",
+            "name": "Component",
+            "component": "/src/views/componentConfig/ComponentConfig.vue"
         }
     })

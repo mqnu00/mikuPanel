@@ -5,7 +5,7 @@ from multiprocessing.pool import Pool
 from multiprocessing.managers import SyncManager
 from multiprocessing import Queue
 import asyncio
-import queue
+from utils.log_util import log
 
 
 class Message(object):
@@ -62,11 +62,18 @@ class Message(object):
             else:
                 return not self.recv_queue.full()
 
-    def read(self, role, uid: str = None, is_sync: bool = True):
+    def init_action(self, uid: str):
+        self.action_info[uid] = manager.Queue()
+
+    def read(self, role = None, uid: str = None, is_sync: bool = True):
         if uid:
             if uid not in self.action_info:
                 raise Exception(f"wrong uid {uid}")
-            msg_queue: manager.Queue = self.action_info[uid]
+            msg_queue: Queue = self.action_info[uid]
+            log.info("read uid")
+            log.info(uid)
+            log.info(msg_queue)
+            log.info(msg_queue.qsize())
             if is_sync:
                 return self.read_queue_sync(msg_queue)
             else:
@@ -82,15 +89,20 @@ class Message(object):
             else:
                 return self.read_queue_async(self.send_queue)
 
-    def write(self, content, role, uid: str = None, is_sync: bool = True):
+    def write(self, content, role=None, uid: str = None, is_sync: bool = True):
         if uid:
-            if uid not in self.action_info:
-                self.action_info[uid] = manager.Queue()
-            msg_queue: manager.Queue = self.action_info[uid]
+            msg_queue: Queue = self.action_info[uid]
+            log.info("write uid")
+            log.info(uid)
+            log.info(msg_queue)
+            log.info(msg_queue.empty())
+            log.info(content)
+            # msg_queue.put_nowait(content)
+            log.info(msg_queue.empty())
             if not is_sync:
-                self.send_queue_async(msg_queue, content)
+                return self.send_queue_async(msg_queue, content)
             else:
-                self.send_queue_sync(msg_queue, content)
+                return self.send_queue_sync(msg_queue, content)
         if role == 0:
             if is_sync:
                 return self.send_queue_sync(self.send_queue, content)
